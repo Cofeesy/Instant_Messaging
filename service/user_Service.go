@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"gin_chat/common/response"
 	"gin_chat/models"
 	"gin_chat/utils"
 	"math/rand"
@@ -19,10 +20,11 @@ import (
 // @Success 200 {string} json{"code","data"}
 // @Router /user/getUserList [get]
 func GetUserList(c *gin.Context) {
-	data := models.GetUserList()
-	c.JSON(200, gin.H{
-		"message": data,
-	})
+	data, err := models.GetUserList()
+	if err != nil {
+		response.FailWithDetailed(data, err.Error(), c)
+	}
+	response.Ok(c)
 }
 
 // 测试成功，应该能看到数据库该用户并且该用户有salt值
@@ -36,25 +38,19 @@ func Register(c *gin.Context) {
 	confirm_password := c.Query("confirm_password")
 
 	if err := c.ShouldBind(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": "111",
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	if user.Password != confirm_password {
-		c.JSON(400, gin.H{
-			"error": "两次输入的密码不一致",
-		})
+		response.FailWithMessage("两次密码不一致", c)
 		return
 	}
 
 	// 如果用户存在，则返回错误
 	if data, err := models.FindUserByName(user.Username); err != nil {
 		if data != nil {
-			c.JSON(400, gin.H{
-				"error": "user already exists",
-			})
+			response.FailWithMessage("用户名已存在", c)
 			return
 		}
 	}
@@ -62,9 +58,7 @@ func Register(c *gin.Context) {
 	// 校验
 	validate := validator.New()
 	if err := validate.Struct(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
@@ -75,15 +69,11 @@ func Register(c *gin.Context) {
 
 	// 创建失败
 	if err := models.CreateUser(&user); err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message": "user created successfully",
-	})
+	response.OkWithMessage("注册成功", c)
 
 }
 
@@ -92,30 +82,25 @@ func Register(c *gin.Context) {
 // @Tag 获取用户列表
 // @Success 200 {string} json{"code","data"}
 // @Router /user/getUserList [get]
+
+// TODO:登陆前后的角色是不同的，登陆后可以发一个token
 func Login(c *gin.Context) {
 	var user models.User_Basic
 	if err := c.ShouldBind(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 	data, err := models.FindUserByNameAndPassword(user.Username, user.Password)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	// 登陆颁发
 	token, err := utils.GenerateToken(user.Username, user.Password)
 	println("token>>>>>>>>", token)
-	// FIXME:更新用户identity字段,
-	//
-	c.JSON(200, gin.H{
-		"message": data,
-	})
+
+	response.OkWithDetailed(data, "登陆成功", c)
 }
 
 // UpdateUser
@@ -126,40 +111,28 @@ func Login(c *gin.Context) {
 func UpdateUserInfo(c *gin.Context) {
 	var user models.User_Basic
 	if err := c.ShouldBind(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	validate := validator.New()
 	if err := validate.Var(user.Username, "omitempty,min=2,max=100"); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	} else if err := validate.Var(user.Phone, "omitempty,len=3"); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	} else if err := validate.Var(user.Email, "omitempty,email"); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	if err := models.UpdateUserInfo(user.Username, user.Password, user.Phone, user.Email); err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message": "user updated successfully",
-	})
+	response.OkWithMessage("更新成功", c)
 
 }
 
@@ -174,47 +147,35 @@ func UpdateUserPasswd(c *gin.Context) {
 	var user models.User_Basic
 	newpassword := c.Query("newpassword")
 	if err := c.ShouldBind(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	validate := validator.New()
 
 	if err := validate.Var(newpassword, "omitempty,min=3,max=100"); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	//
 	u, err := models.FindUserByName(user.Username)
 	if err != nil || u != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	if !utils.DecryptMD5(user.Salt, newpassword, u.Password) {
-		c.JSON(500, gin.H{
-			"error": "密码输入错误",
-		})
+		response.FailWithMessage("密码输入错误", c)
 		return
 	}
 
 	if err := models.UpdateUserPasswd(user.Username, newpassword); err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message": "user updated successfully",
-	})
+	response.OkWithMessage("更新成功", c)
 
 }
 
@@ -226,30 +187,71 @@ func UpdateUserPasswd(c *gin.Context) {
 func DeleteUser(c *gin.Context) {
 	var user models.User_Basic
 	if err := c.ShouldBind(&user); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	validate := validator.New()
 	if err := validate.Var(user.Username, "omitempty,min=2,max=100"); err != nil {
-		c.JSON(400, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	if err := models.DeleteUser(user.Username); err != nil {
-		c.JSON(500, gin.H{
-			"error": err.Error(),
-		})
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message": "user deleted successfully",
-	})
+	response.OkWithMessage("删除成功", c)
+
+}
+
+func FindFrend(c *gin.Context) {
+	var contact *models.Contact
+	ownerid, err := strconv.Atoi(c.Query("ownerid"))
+	frendid, err := strconv.Atoi(c.Query("frendid"))
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	if contact, err = models.GetFrend(ownerid, frendid); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(contact, "查找成功", c)
+}
+
+func FindFrends(c *gin.Context) {
+	users := make([]*models.User_Basic, 0)
+	userid, err := strconv.Atoi(c.Query("userid"))
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	if users, err = models.GetFrends(userid); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(users, "查找成功", c)
+
+}
+
+func AddFrends(c *gin.Context) {
+
+}
+
+func CreateGroup(c *gin.Context) {
+
+}
+
+func FindGroup(c *gin.Context) {
+
+}
+
+func AddGroup(c *gin.Context) {
 
 }
 
@@ -264,5 +266,4 @@ func WsHandler(c *gin.Context) {
 	msg.TargetId, _ = strconv.Atoi(TargetId)
 	msg.Content = Content
 	models.Myws(msg, c)
-
 }

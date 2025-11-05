@@ -34,15 +34,17 @@ func (user *User_Basic) TableName() string {
 	return "user_basic"
 }
 
-func GetUserList() []*User_Basic {
+func GetUserList() ([]*User_Basic, error) {
 	data := make([]*User_Basic, 10)
 	// 记得这里是传地址
 	// gorm操作并不熟悉
-	db.Find(&data)
+	if err := db.Find(&data).Error; err != nil {
+		return nil, err
+	}
 	for _, v := range data {
 		fmt.Println(v)
 	}
-	return data
+	return data, nil
 }
 
 // 为什么需要这个,登陆的时候需要查找，或者其他的操作也可能需要查找

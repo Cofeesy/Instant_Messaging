@@ -25,13 +25,20 @@ func InitRouter() *gin.Engine {
 	r.POST("/register", service.Register)
 	r.POST("/login", service.Login)
 
-	// 用户
+	// user
 	r.GET("/user/getUserList", service.GetUserList)
 	// r.POST("/user/createUser", service.CreateUser)
 	r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
 	r.PUT("/user/updateUserInfo", service.UpdateUserInfo)
 	r.DELETE("/user/deleteUser", service.DeleteUser)
 
+	// contact
+	r.GET("/user/getFrend",service.FindFrend)
+	r.GET("/user/getFrends",service.FindFrends)
+
+	// group
+
+	
 	// chat
 	r.GET("/ws", service.WsHandler)
 
