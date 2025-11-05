@@ -239,16 +239,47 @@ func FindFrends(c *gin.Context) {
 
 }
 
-func AddFrends(c *gin.Context) {
+func AddFrend(c *gin.Context) {
+	owner, err := strconv.Atoi(c.Query("ownerid"))
+	frend, err := strconv.Atoi(c.Query("frendid"))
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	err = models.AddFrend(owner, frend)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
 
+	response.OkWithMessage("添加成功", c)
 }
 
 func CreateGroup(c *gin.Context) {
+	owner, err := strconv.Atoi(c.Query("ownerid"))
+	groupName := c.Query("groupname")
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
 
+	group, err := models.CreateGroup(owner, groupName)
+	if err != nil {
+		response.FailWithDetailed(group, err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(group, "查找成功", c)
 }
 
 func FindGroup(c *gin.Context) {
-
+	groupName := c.Query("groupname")
+	group, err := models.FindGroupByName(groupName)
+	if err != nil {
+		response.FailWithDetailed(group, err.Error(), c)
+		return
+	}
+	response.OkWithDetailed(group, "查找成功", c)
 }
 
 func AddGroup(c *gin.Context) {
