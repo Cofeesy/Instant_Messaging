@@ -99,4 +99,3 @@ func CloseDB() {
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 }
-

@@ -3,13 +3,11 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"sync"
-
-	"log"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"log"
+	"net/http"
+	"sync"
 )
 
 // 消息源码
@@ -43,7 +41,7 @@ type Client struct {
 	// *websocket.Conn 类型的对象。这个对象是与单个客户端进行所有通信的唯一凭证和工具。之后的所有操作都是调用这个 conn 对象的方法。
 	conn *websocket.Conn
 	// 那这个的作用主要是用来接受客户端的消息吧
-	msg  Message
+	msg Message
 	// 客户端邮箱,存储待发送消息
 	send chan []byte
 }
@@ -124,17 +122,16 @@ func (client *Client) Recieve() {
 	}
 }
 
-
 // 私聊
 // 写消息进去
 // 主要是写是建立在连接双方的写，通过把消息放到其他人的send上，服务器读取到会将该消息发送到该send连接到的client上
 // 这里的“写” (conn.WriteMessage)，最终都是发生在某一个具体的 WebSocket 连接 (conn) 上的。
 // 即clientA 的 Send goroutine 只会在 clientA.conn 上写，clientB 的 Send goroutine 只会在 clientB.conn 上写。职责非常明确
 // 关键点是看谁开启了这个协程，服务器只是负责发送和接受信息
-func SendMsgToUser(userId int, msg []byte){
+func SendMsgToUser(userId int, msg []byte) {
 
 	mu.RLock()
-	client:=UserToClient[userId]
+	client := UserToClient[userId]
 	mu.RUnlock()
 
 	client.send <- msg
@@ -142,7 +139,7 @@ func SendMsgToUser(userId int, msg []byte){
 }
 
 // 群聊单发
-func SendMsgToGroup(GroupId int, msg Message){
+func SendMsgToGroup(GroupId int, msg Message) {
 
 }
 

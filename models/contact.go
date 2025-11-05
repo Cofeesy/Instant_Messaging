@@ -1,8 +1,11 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"errors"
+	"github.com/jinzhu/gorm"
+)
 
-// 关系
+// 好友/群关系
 type Contact struct {
 	gorm.Model
 	OwnerId  int `json:"ownerid"`
@@ -47,5 +50,50 @@ func GetFrends(ownerid int) ([]*User_Basic, error) {
 }
 
 // 添加好友
+func AddFrend(ownerid, frendid int) error {
+	// 这是一个事务操作
+	tx := db.Begin()
+	//
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Error; err != nil {
+		return err
+	}
+
+	// 查找是否存在
+	var contact Contact
+	// 这里用Find，避免First的没找到错误
+	if tx.Where("owner_id=? AND frend_id=? AND relation=?", ownerid, frendid, 1).Find(&contact).RowsAffected != 0 {
+		tx.Rollback()
+		return errors.New("已添加过好友")
+	}
+
+	// 创建1
+	contact1 := Contact{
+		OwnerId:  ownerid,
+		FrendId:  frendid,
+		Relation: 1,
+	}
+	if err := tx.Create(&contact1).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 创建2
+	contact2 := Contact{
+		OwnerId:  frendid,
+		FrendId:  ownerid,
+		Relation: 1,
+	}
+	if err := tx.Create(&contact2).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
+}
 
 // 删除好友
