@@ -33,10 +33,13 @@ func InitRouter() *gin.Engine {
 	r.DELETE("/user/deleteUser", service.DeleteUser)
 
 	// contact
-	r.GET("/user/getFrend",service.FindFrend)
-	r.GET("/user/getFrends",service.FindFrends)
+	r.GET("/user/findFrend",service.FindFrend)
+	r.GET("/user/findFrends",service.FindFrends)
+	r.POST("/user/addFrend",service.AddFrend)
 
 	// group
+	r.GET("/user/findGroup",service.FindGroup)
+	r.POST("/user/createGroup",service.CreateGroup)
 
 	
 	// chat

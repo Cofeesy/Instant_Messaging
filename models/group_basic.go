@@ -34,7 +34,7 @@ func CreateGroup(ownerId int, groupName string) (*Group, error) {
 // 通过群名查找群
 func FindGroupByName(groupName string) (*Group, error) {
 	var group Group
-	if err := db.Where("groupname = ?", groupName).First(&group).Error; err != nil {
+	if err := db.Where("group_name = ?", groupName).First(&group).Error; err != nil {
 		return nil, err
 	}
 	return &group, nil

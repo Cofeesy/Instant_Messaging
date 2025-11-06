@@ -269,7 +269,7 @@ func CreateGroup(c *gin.Context) {
 		return
 	}
 
-	response.OkWithDetailed(group, "查找成功", c)
+	response.OkWithDetailed(group, "创建群组成功", c)
 }
 
 func FindGroup(c *gin.Context) {
@@ -279,7 +279,7 @@ func FindGroup(c *gin.Context) {
 		response.FailWithDetailed(group, err.Error(), c)
 		return
 	}
-	response.OkWithDetailed(group, "查找成功", c)
+	response.OkWithDetailed(group, "查找群组成功", c)
 }
 
 func AddGroup(c *gin.Context) {
