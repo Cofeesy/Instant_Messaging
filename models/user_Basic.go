@@ -3,9 +3,9 @@ package models
 import (
 	"fmt"
 	"gin_chat/utils"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"time"
-
-	"github.com/jinzhu/gorm"
 )
 
 // 如果传进来的值中只包含一部份，像测试中我只会传name和password
@@ -16,6 +16,7 @@ import (
 // omitempty是可选
 type User_Basic struct {
 	gorm.Model
+	UUID          uuid.UUID  `json:"uuid" gorm:"index;unique;not null;type:varchar(36);comment:'对外暴露的用户ID'"`
 	Username      string     `json:"username" gorm:"unique;not null" validate:"required"`
 	Password      string     `json:"password" validate:"required,min=2,max=20"`
 	Phone         string     `json:"phone" validate:"omitempty,len=11"`
@@ -32,6 +33,14 @@ type User_Basic struct {
 
 func (user *User_Basic) TableName() string {
 	return "user_basic"
+}
+
+// hook
+func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
+	fmt.Println("BeforeCreate hook is being called!") // 添加日志
+	u.UUID = uuid.New()
+	fmt.Print(u.UUID)
+	return
 }
 
 func GetUserList() ([]*User_Basic, error) {

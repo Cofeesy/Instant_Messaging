@@ -14,10 +14,10 @@ func main() {
 
 	// Migrate the schema
 	// 自动迁移不需要具体数据，只需要结构体字段即可
-	// db.AutoMigrate(&models.User_Basic{})
+	db.AutoMigrate(&models.User_Basic{})
 	// db.AutoMigrate(&models.Message{})
 	// db.AutoMigrate(&models.Contact{})
-	db.AutoMigrate(&models.Group{})
+	// db.AutoMigrate(&models.Group{})
 
 	// Create
 	// db.Create(&models.User_Basic{Username: "John", Password: "123456"})

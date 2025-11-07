@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>IM解决方案</title>
-<meta name="Description" content="马士兵教育IM通信系统">
+<meta name="Description" content="IM通信系统">
 <meta name="Keywords" content="无人售货机，小程序，推送，群聊,单聊app">
 <link rel="stylesheet" href="/asset/plugins/mui/css/mui.css" />
 <link rel="stylesheet" href="/asset/css/chat.css" />
@@ -54,6 +54,7 @@
    function post(uri,data,fn){
                 var xhr = new XMLHttpRequest();
                 xhr.open("POST","//"+location.host+"/"+uri, true);
+                // print(location.host)
                 // 添加http头，发送信息至服务器时内容编码类型
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
                 xhr.onreadystatechange = function() {

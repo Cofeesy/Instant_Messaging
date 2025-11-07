@@ -5,8 +5,6 @@ import (
 	"gin_chat/utils/setting"
 
 	"github.com/gin-gonic/gin"
-
-	// docs "github.com/go-project-name/docs"
 	"gin_chat/docs"
 
 	swaggerfiles "github.com/swaggo/files"
@@ -17,11 +15,17 @@ func InitRouter() *gin.Engine {
 	r := gin.Default()
 	gin.SetMode(setting.RunMode)
 
+	// 配置静态资源
+	r.Static("/asset", "./asset")
+	r.StaticFile("/favicon.ico", "asset/images/favicon.ico")
+	//	r.StaticFS()
+	r.LoadHTMLGlob("views/**/*")
+
 	docs.SwaggerInfo.BasePath = ""
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// 首页
-	r.GET("/index", service.Index)
+	r.GET("/index", service.GetIndex)
 	r.POST("/register", service.Register)
 	r.POST("/login", service.Login)
 
@@ -30,6 +34,7 @@ func InitRouter() *gin.Engine {
 	// r.POST("/user/createUser", service.CreateUser)
 	r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
 	r.PUT("/user/updateUserInfo", service.UpdateUserInfo)
+	// 用户注销
 	r.DELETE("/user/deleteUser", service.DeleteUser)
 
 	// contact
@@ -43,7 +48,7 @@ func InitRouter() *gin.Engine {
 
 	
 	// chat
-	r.GET("/ws", service.WsHandler)
+	r.GET("/chat", service.WsHandler)
 
 	return r
 }
