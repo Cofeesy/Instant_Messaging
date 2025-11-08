@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gin_chat/common/response"
 	"gin_chat/models"
+	"gin_chat/models/system"
 	"gin_chat/utils"
 	"math/rand"
 	"strconv"
@@ -34,47 +35,46 @@ func GetUserList(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /user/createUser [post]
 func Register(c *gin.Context) {
-	var user models.User_Basic
-	confirm_password := c.Query("confirm_password")
-
-	if err := c.ShouldBind(&user); err != nil {
+	var user_register system.User_Register
+	fmt.Println("aaa")
+	if err := c.ShouldBind(&user_register); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	if user.Password != confirm_password {
+	if user_register.Password != user_register.Identity {
 		response.FailWithMessage("两次密码不一致", c)
 		return
 	}
 
 	// 如果用户存在，则返回错误
-	if data, err := models.FindUserByName(user.Username); err != nil {
+	if data, err := models.FindUserByName(user_register.Name); err != nil {
 		if data != nil {
 			response.FailWithMessage("用户名已存在", c)
 			return
 		}
 	}
-
+	// fmt.Print("aaaa")
 	// 校验
 	validate := validator.New()
-	if err := validate.Struct(&user); err != nil {
+	if err := validate.Struct(&user_register); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	// 创建的时候生成一个随机数，用于加密密码
 	salt := fmt.Sprintf("%06d", rand.Intn(10000))
-	user.Salt = salt
-	user.Password = utils.EncryptMD5(user.Password, user.Salt)
+	// user.Salt = salt
+	user_register.Salt = salt
+	user_register.Password = utils.EncryptMD5(user_register.Password, salt)
 
 	// 创建失败
-	if err := models.CreateUser(&user); err != nil {
+	if err := models.CreateUser(&user_register); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	response.OkWithMessage("注册成功", c)
-
 }
 
 // GetUserList
@@ -85,12 +85,13 @@ func Register(c *gin.Context) {
 
 // TODO:登陆前后的角色是不同的，登陆后可以发一个token
 func Login(c *gin.Context) {
-	var user models.User_Basic
-	if err := c.ShouldBind(&user); err != nil {
+	var user_login system.User_Login
+	// var user models.User_Basic
+	if err := c.ShouldBind(&user_login); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	data, err := models.FindUserByNameAndPassword(user.Username, user.Password)
+	user, err := models.FindUserByNameAndPassword(user_login.Name, user_login.Password)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -100,7 +101,7 @@ func Login(c *gin.Context) {
 	token, err := utils.GenerateToken(user.Username, user.Password)
 	println("token>>>>>>>>", token)
 
-	response.OkWithDetailed(data, "登陆成功", c)
+	response.OkWithDetailed(user, "登陆成功", c)
 }
 
 // UpdateUser

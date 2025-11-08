@@ -2,9 +2,10 @@ package service
 
 import (
 	"gin_chat/common/response"
+	"gin_chat/models"
 	"html/template"
-
 	"github.com/gin-gonic/gin"
+	"strconv"
 )
 
 // Server-Side Rendering, SSR，后端渲染的项目，不是前后端分离的
@@ -25,15 +26,43 @@ func GetIndex(c *gin.Context) {
 	t.Execute(c.Writer, "index is ok")
 }
 
-
-func ToRegister(c *gin.Context){
-	t,err:=template.ParseFiles("views/user/register.html")
-	if err!=nil{
+func ToRegister(c *gin.Context) {
+	t, err := template.ParseFiles("views/user/register.html")
+	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 	}
-	t.Execute(c.Writer,"register")
+	t.Execute(c.Writer, "register")
 }
 
-func ToChat(c *gin.Context){
+func ToLogin(c *gin.Context) {
+	t, err := template.ParseFiles("views/user/login.html")
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+	}
+	t.Execute(c.Writer, "login")
+}
 
+func ToChat(c *gin.Context) {
+	t, err := template.ParseFiles("views/chat/index.html",
+		"views/chat/head.html",
+		"views/chat/foot.html",
+		"views/chat/tabmenu.html",
+		"views/chat/concat.html",
+		"views/chat/group.html",
+		"views/chat/profile.html",
+		"views/chat/createcom.html",
+		"views/chat/userinfo.html",
+		"views/chat/main.html")
+
+	if err != nil {
+		panic(err)
+	}
+	// 获取信息
+	userId, _ := strconv.Atoi(c.Query("userId"))
+	token := c.Query("token")
+	user := models.User_Basic{}
+	user.ID = uint(userId)
+	user.LoginToken = token	
+	//fmt.Println("ToChat>>>>>>>>", user)
+	t.Execute(c.Writer, user)
 }

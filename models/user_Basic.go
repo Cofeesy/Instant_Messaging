@@ -1,11 +1,14 @@
 package models
 
 import (
+	"errors"
 	"fmt"
+	"gin_chat/models/system"
 	"gin_chat/utils"
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 // 如果传进来的值中只包含一部份，像测试中我只会传name和password
@@ -16,7 +19,7 @@ import (
 // omitempty是可选
 type User_Basic struct {
 	gorm.Model
-	UUID          uuid.UUID  `json:"uuid" gorm:"index;unique;not null;type:varchar(36);comment:'对外暴露的用户ID'"`
+	UUID          uuid.UUID  `json:"uuid" gorm:"type:varchar(36);comment:'对外暴露的用户ID'"`
 	Username      string     `json:"username" gorm:"unique;not null" validate:"required"`
 	Password      string     `json:"password" validate:"required,min=2,max=20"`
 	Phone         string     `json:"phone" validate:"omitempty,len=11"`
@@ -29,6 +32,7 @@ type User_Basic struct {
 	LoginOutTime  *time.Time `json:"login_out_time"`
 	IsLoginOut    bool       `json:"is_login_out"`
 	DeviceInfo    string     `json:"device_info"`
+	LoginToken    string     `json:"token"`
 }
 
 func (user *User_Basic) TableName() string {
@@ -37,7 +41,7 @@ func (user *User_Basic) TableName() string {
 
 // hook
 func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
-	fmt.Println("BeforeCreate hook is being called!") // 添加日志
+	// fmt.Println("BeforeCreate hook is being called!") // 添加日志
 	u.UUID = uuid.New()
 	fmt.Print(u.UUID)
 	return
@@ -69,18 +73,23 @@ func FindUserByName(name string) (*User_Basic, error) {
 func FindUserByNameAndPassword(name, password string) (*User_Basic, error) {
 	var user User_Basic
 	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
-		return nil, err
+		return nil, errors.New("该用户不存在")
 	}
-	password = utils.EncryptMD5(password, user.Salt)
-	if err := db.Where("username = ? AND password = ?", name, password).First(&user).Error; err != nil {
-		return nil, err
+	if !utils.DecryptMD5(user.Salt, user.Password, password) {
+		return nil, errors.New("密码输入错误")
 	}
 	return &user, nil
 }
 
 // 创建这个用户
-func CreateUser(user *User_Basic) error {
-	result := db.Create(user)
+func CreateUser(user_register *system.User_Register) error {
+	var user User_Basic
+	user.Username = user_register.Name
+	user.Password = user_register.Password
+	user.Salt = user_register.Salt
+	// fmt.Println(user.Username)
+	// fmt.Println(user.Password)
+	result := db.Create(&user)
 	return result.Error
 }
 

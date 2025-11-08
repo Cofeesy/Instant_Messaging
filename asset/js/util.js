@@ -118,7 +118,8 @@ Core.prototype.post=function(uri,data,fn){
         // 添加http头，发送信息至服务器时内容编码类型
         xhr.setRequestHeader(
         	"Content-Type",
-			"application/x-www-form-urlencoded"
+			// "application/x-www-form-urlencoded"
+			"application/json"
 		);
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
@@ -128,11 +129,13 @@ Core.prototype.post=function(uri,data,fn){
         xhr.onerror = function(){
         	reject({"code":-1,"msg":"服务器繁忙"})
 		}
-        var _data=[];
-        for(var i in data){
-            _data.push( i +"=" + encodeURI(data[i]));
-        }
-    	xhr.send(_data.join("&"));
+		// 这里需要改为适合json绑定的，而不是form表单绑定的
+        // var _data=[];
+        // for(var i in data){
+        //     _data.push( i +"=" + encodeURI(data[i]));
+        // }
+    	// xhr.send(_data.join("&"));
+		xhr.send(JSON.stringify(data));
 
     })
 }
