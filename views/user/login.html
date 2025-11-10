@@ -58,7 +58,7 @@
                     if (res.code != 0) {
                         mui.toast(res.msg)
                     } else {
-                        var url = "/chat/index.shtml?id=" + res.data.id
+                        var url = "/toChat/index.shtml?id=" + res.data.id
                             + "&token=" + res.data.token
                         userInfo(res.data)
                         userId(res.data.id)

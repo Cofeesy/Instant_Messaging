@@ -147,7 +147,7 @@ func UpdateUserInfo(c *gin.Context) {
 func UpdateUserPasswd(c *gin.Context) {
 	var user models.User_Basic
 	newpassword := c.Query("newpassword")
-	if err := c.ShouldBind(&user); err != nil {
+	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -187,7 +187,7 @@ func UpdateUserPasswd(c *gin.Context) {
 // @Router //user/deleteUser [delete]
 func DeleteUser(c *gin.Context) {
 	var user models.User_Basic
-	if err := c.ShouldBind(&user); err != nil {
+	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -208,14 +208,17 @@ func DeleteUser(c *gin.Context) {
 }
 
 func FindFrend(c *gin.Context) {
-	var contact *models.Contact
-	ownerid, err := strconv.Atoi(c.Query("ownerid"))
-	frendid, err := strconv.Atoi(c.Query("frendid"))
-	if err != nil {
+	// var contact *models.Contact
+	// ownerid, err := strconv.Atoi(c.Query("ownerid"))
+	// frendid, err := strconv.Atoi(c.Query("frendid"))
+	var frend system.Frend
+
+	if err := c.ShouldBindBodyWithJSON(&frend);err!= nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	if contact, err = models.GetFrend(ownerid, frendid); err != nil {
+	contact, err := models.GetFrend(frend.OwnerId, frend.FrendId); 
+	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -224,19 +227,23 @@ func FindFrend(c *gin.Context) {
 }
 
 func FindFrends(c *gin.Context) {
-	users := make([]*models.User_Basic, 0)
-	userid, err := strconv.Atoi(c.Query("userid"))
+	var frendpayload system.FrendsPayload
+	// userid, err := strconv.Atoi(c.Query("userid"))
+	err := c.ShouldBindJSON(&frendpayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	if users, err = models.GetFrends(userid); err != nil {
+	userid, _ := strconv.Atoi(frendpayload.UserId)
+
+	frendpayload.Users, err = models.GetFrends(userid)
+	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	response.OkWithDetailed(users, "查找成功", c)
+	response.OkWithDetailed(frendpayload.Users, "查找成功", c)
 
 }
 

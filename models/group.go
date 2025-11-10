@@ -41,3 +41,6 @@ func FindGroupByName(groupName string) (*Group, error) {
 }
 
 // 加载群列表
+func LoadGroup(){
+	
+}

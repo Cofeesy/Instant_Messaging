@@ -3,11 +3,14 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
+	"gin_chat/utils/setting"
 	"log"
 	"net/http"
 	"sync"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 // 消息源码
@@ -41,7 +44,8 @@ type Client struct {
 	// *websocket.Conn 类型的对象。这个对象是与单个客户端进行所有通信的唯一凭证和工具。之后的所有操作都是调用这个 conn 对象的方法。
 	conn *websocket.Conn
 	// 那这个的作用主要是用来接受客户端的消息吧
-	msg Message
+	msg           Message
+	HeartbeatTime uint64 //心跳时间
 	// 客户端邮箱,存储待发送消息
 	send chan []byte
 }
@@ -147,3 +151,33 @@ func SendMsgToGroup(GroupId int, msg Message) {
 // func SendMsgToAll(){
 
 // }
+
+// 清理超时连接
+func CleanConnection(param interface{}) (result bool) {
+	result = true
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("cleanConnection err", r)
+		}
+	}()
+	//fmt.Println("定时任务,清理超时连接 ", param)
+	//node.IsHeartbeatTimeOut()
+	currentTime := uint64(time.Now().Unix())
+	for i := range UserToClient {
+		client := UserToClient[i]
+		if client.IsHeartbeatTimeOut(currentTime) {
+			fmt.Println("心跳超时..... 关闭连接：", client)
+			client.conn.Close()
+		}
+	}
+	return result
+}
+
+// 用户心跳是否超时
+func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
+	if client.HeartbeatTime+uint64(setting.HeartbeatMaxTime) <= currentTime {
+		fmt.Println("心跳超时...自动下线", client)
+		timeout = true
+	}
+	return
+}

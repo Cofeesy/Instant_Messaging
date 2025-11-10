@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"fmt"
 )
 
 // Server-Side Rendering, SSR，后端渲染的项目，不是前后端分离的
@@ -63,6 +64,6 @@ func ToChat(c *gin.Context) {
 	user := models.User_Basic{}
 	user.ID = uint(userId)
 	user.LoginToken = token	
-	//fmt.Println("ToChat>>>>>>>>", user)
+	fmt.Println("ToChat>>>>>>>>", user)
 	t.Execute(c.Writer, user)
 }

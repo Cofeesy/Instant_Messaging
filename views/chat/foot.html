@@ -30,7 +30,7 @@
 
 
     function userId() {
-        return parseInt(util.parseQuery("userId"))
+        return parseInt(util.parseQuery("userid"))
     }
     var app = new Vue(
         {
@@ -139,7 +139,7 @@
 
             },
             created: function () {
-                this.loadfriends();
+                this.findfriends();
                 this.loadcommunitys();
                 this.loaddoutures();
                 setInterval(this.heartbeat, 10 * 1000);
@@ -484,9 +484,10 @@
                 sendmsg: function () {
 
                 },
-                loadfriends: function () {
+                findfriends: function () {
                     var that = this;
-                    post("searchFriends", { userId: userId() }, function (res) {
+                    // post("searchFriends", { userId: userId() }, function (res) {
+                    post("user/findFriends", { userId: userId() }, function (res) {
                         that.friends = res.Rows || [];
                         var usermap = this.usermap;
                         for (var i in res.Rows) {

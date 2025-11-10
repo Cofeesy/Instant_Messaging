@@ -30,10 +30,13 @@ func InitRouter() *gin.Engine {
 	r.GET("/toRegister", service.ToRegister)
 	r.GET("/toChat", service.ToChat)
 
-	// user
-	r.GET("/user/getUserList", service.GetUserList)
 	r.POST("/login", service.Login)
 	r.POST("/register", service.Register)
+	// chat
+	r.GET("/chat", service.WsHandler)
+
+	// user
+	r.GET("/user/getUserList", service.GetUserList)
 	// r.POST("/user/createUser", service.CreateUser)
 	r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
 	r.PUT("/user/updateUserInfo", service.UpdateUserInfo)
@@ -49,8 +52,6 @@ func InitRouter() *gin.Engine {
 	r.GET("/user/findGroup",service.FindGroup)
 	r.POST("/user/createGroup",service.CreateGroup)
 	
-	// chat
-	r.GET("/chat", service.WsHandler)
 
 	return r
 }
