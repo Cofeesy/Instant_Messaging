@@ -43,8 +43,9 @@
         },
         methods:{
             login:function(){
-                //检测手机号是否正确
                 console.log("login")
+
+                //检测手机号是否正确
                 //检测密码是否为空
 
                 //网络请求
@@ -53,10 +54,12 @@
                     console.log(res)
                     if(res.code!=0){
                         mui.toast(res.message)
-                    }else{         
-                        var url = "/toChat?userId="+res.data.ID+"&token="+res.data.Identity
+                    }else{
+                        var url = "/toChat?userid="+res.data.ID+"&token="+res.data.Identity
+                        // 后续取消在url中携带信息
+                        // var url = "/toChat"
                         userInfo(res.data)
-                        userId(res.data.ID)
+                        userid(res.data.ID)
                         mui.toast("登录成功,即将跳转")
                         location.href = url
                     }

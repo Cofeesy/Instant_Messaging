@@ -69,3 +69,5 @@ func LoadTimer() {
 	HeartbeatMaxTime = Timer.Key("HeartbeatMaxTime").MustUint64(30000)
 	RedisOnlineTime = Timer.Key("RedisOnlineTime").MustUint64(40)
 }
+
+

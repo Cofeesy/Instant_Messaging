@@ -24,7 +24,7 @@ func GetIndex(c *gin.Context) {
 	}
 
 	// 将生成的 HTML写入 HTTP 响应体中。
-	t.Execute(c.Writer, "index is ok")
+	t.Execute(c.Writer, "index 跳转成功")
 }
 
 func ToRegister(c *gin.Context) {
@@ -32,7 +32,7 @@ func ToRegister(c *gin.Context) {
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 	}
-	t.Execute(c.Writer, "register")
+	t.Execute(c.Writer, "register跳转成功")
 }
 
 func ToLogin(c *gin.Context) {
@@ -40,7 +40,7 @@ func ToLogin(c *gin.Context) {
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 	}
-	t.Execute(c.Writer, "login")
+	t.Execute(c.Writer, "login跳转成功")
 }
 
 func ToChat(c *gin.Context) {
@@ -59,11 +59,13 @@ func ToChat(c *gin.Context) {
 		panic(err)
 	}
 	// 获取信息
+	// TODO:改其他方式，比如session的地方获取
 	userId, _ := strconv.Atoi(c.Query("userId"))
 	token := c.Query("token")
 	user := models.User_Basic{}
 	user.ID = uint(userId)
 	user.LoginToken = token	
 	fmt.Println("ToChat>>>>>>>>", user)
+	// 返回给前端的数据
 	t.Execute(c.Writer, user)
 }

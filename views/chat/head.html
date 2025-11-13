@@ -1,6 +1,6 @@
 {{define "/chat/head.shtml"}}
 <script>
-    function userId(id){
+    function userid(id){
         if(typeof  id =="undefined"){
             var r = sessionStorage.getItem("userid");
             if(!r){
@@ -26,7 +26,7 @@
     }
     var url = location.href;
     var isOpen = url.indexOf("/login")>-1 || url.indexOf("/register")>-1
-    if (!userId() && !isOpen){
+    if (!userid() && !isOpen){
       // location.href = "login.shtml";
     }
 
@@ -66,8 +66,8 @@
                     }
                 };
                 var _data=[];
-                if(!! userId()){
-                   // data["userid"] = userId();
+                if(!! userid()){
+                   // data["userid"] = userid();
                 }
                 for(var i in data){
                     _data.push( i +"=" + encodeURI(data[i]));
@@ -85,8 +85,8 @@
                 };
                 // var _data=[];
                 // var formdata = new FormData();
-                // if(!! userId()){
-                //     formdata.append("userid",userId());
+                // if(!! userid()){
+                //     formdata.append("userid",userid());
                 // }
                 // formdata.append("file",dom.files[0])
                 // xhr.send(formdata);
@@ -104,8 +104,8 @@
        var _data=[];
        var formdata = new FormData();
        formdata.append("filetype",filetype);
-       if(!! userId()){
-           formdata.append("userid",userId());
+       if(!! userid()){
+           formdata.append("userid",userid());
        }
        formdata.append("file",blob)
        xhr.send(formdata);

@@ -63,7 +63,27 @@ func GetUserList() ([]*User_Basic, error) {
 // 为什么需要这个,登陆的时候需要查找，或者其他的操作也可能需要查找
 func FindUserByName(name string) (*User_Basic, error) {
 	var user User_Basic
-	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
+	err := db.Where("username = ?", name).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 没找到用户
+			return nil, errors.New("用户不存在")
+		}
+		// 其他数据库错误
+		return nil, err
+	}
+	return &user, nil
+}
+
+func FindUserByID(id uint) (*User_Basic, error) {
+	var user User_Basic
+	err := db.Where("id = ?", id).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 没找到用户
+			return nil, errors.New("用户不存在")
+		}
+		// 其他数据库错误
 		return nil, err
 	}
 	return &user, nil
@@ -72,9 +92,16 @@ func FindUserByName(name string) (*User_Basic, error) {
 // FIXME:这里应该有问题
 func FindUserByNameAndPassword(name, password string) (*User_Basic, error) {
 	var user User_Basic
-	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
-		return nil, errors.New("该用户不存在")
+	err := db.Where("username = ?", name).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 没找到用户
+			return nil, errors.New("用户不存在")
+		}
+		// 其他数据库错误
+		return nil, err
 	}
+
 	if !utils.DecryptMD5(user.Salt, user.Password, password) {
 		return nil, errors.New("密码输入错误")
 	}
@@ -94,12 +121,16 @@ func CreateUser(user_register *system.User_Register) error {
 }
 
 // 更新用户信息名字和电话，邮箱
-func UpdateUserInfo(name, password, phone, email string) error {
+func UpdateUserInfo(name, phone, email string) error {
 	var user User_Basic
-	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
+	err := db.Where("username = ?", name).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errors.New("用户不存在")
+		}
 		return err
 	}
-	result := db.Model(&user).Updates(map[string]interface{}{"UserName": name, "Password": password, "Phone": phone, "Email": email})
+	result := db.Model(&user).Updates(map[string]interface{}{"UserName": name, "Phone": phone, "Email": email})
 	// 这个错误由db记录
 	return result.Error
 }

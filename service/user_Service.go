@@ -1,16 +1,18 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"gin_chat/common/response"
 	"gin_chat/models"
 	"gin_chat/models/system"
 	"gin_chat/utils"
 	"math/rand"
-	"strconv"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/websocket"
 )
 
 // @Success <code> {<type>} <model or object> "<description>"
@@ -36,8 +38,7 @@ func GetUserList(c *gin.Context) {
 // @Router /user/createUser [post]
 func Register(c *gin.Context) {
 	var user_register system.User_Register
-	fmt.Println("aaa")
-	if err := c.ShouldBind(&user_register); err != nil {
+	if err := c.ShouldBindJSON(&user_register); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -54,7 +55,6 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
-	// fmt.Print("aaaa")
 	// 校验
 	validate := validator.New()
 	if err := validate.Struct(&user_register); err != nil {
@@ -87,7 +87,7 @@ func Register(c *gin.Context) {
 func Login(c *gin.Context) {
 	var user_login system.User_Login
 	// var user models.User_Basic
-	if err := c.ShouldBind(&user_login); err != nil {
+	if err := c.ShouldBindJSON(&user_login); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -97,7 +97,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 登陆颁发
+	// 登陆颁发,那这个东西是存到数据库吗？
 	token, err := utils.GenerateToken(user.Username, user.Password)
 	println("token>>>>>>>>", token)
 
@@ -110,8 +110,8 @@ func Login(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /user/updateUser [put]
 func UpdateUserInfo(c *gin.Context) {
-	var user models.User_Basic
-	if err := c.ShouldBind(&user); err != nil {
+	var user system.UpdateUserInfo
+	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -128,7 +128,7 @@ func UpdateUserInfo(c *gin.Context) {
 		return
 	}
 
-	if err := models.UpdateUserInfo(user.Username, user.Password, user.Phone, user.Email); err != nil {
+	if err := models.UpdateUserInfo(user.Username, user.Phone, user.Email); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -144,44 +144,43 @@ func UpdateUserInfo(c *gin.Context) {
 // @Param password query string true "密码"
 // @Success 200 {string} json{"code","data"}
 // @Router /user/updateUser [put]
-func UpdateUserPasswd(c *gin.Context) {
-	var user models.User_Basic
-	newpassword := c.Query("newpassword")
-	if err := c.ShouldBindJSON(&user); err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
+// func UpdateUserPasswd(c *gin.Context) {
+// 	var user system.UpdateUserPasswd
+// 	if err := c.ShouldBindJSON(&user); err != nil {
+// 		response.FailWithMessage(err.Error(), c)
+// 		return
+// 	}
 
-	validate := validator.New()
+// 	validate := validator.New()
 
-	if err := validate.Var(newpassword, "omitempty,min=3,max=100"); err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
+// 	if err := validate.Var(user.NewPassword, "omitempty,min=3,max=100"); err != nil {
+// 		response.FailWithMessage(err.Error(), c)
+// 		return
+// 	}
 
-	//
-	u, err := models.FindUserByName(user.Username)
-	if err != nil || u != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
+// 	//
+// 	u, err := models.FindUserByName(user.Username)
+// 	if err != nil || u != nil {
+// 		response.FailWithMessage(err.Error(), c)
+// 		return
+// 	}
 
-	if !utils.DecryptMD5(user.Salt, newpassword, u.Password) {
-		response.FailWithMessage("密码输入错误", c)
-		return
-	}
+// 	if !utils.DecryptMD5(user.Salt, newpassword, u.Password) {
+// 		response.FailWithMessage("密码输入错误", c)
+// 		return
+// 	}
 
-	if err := models.UpdateUserPasswd(user.Username, newpassword); err != nil {
-		response.FailWithMessage(err.Error(), c)
-		return
-	}
+// 	if err := models.UpdateUserPasswd(user.Username, newpassword); err != nil {
+// 		response.FailWithMessage(err.Error(), c)
+// 		return
+// 	}
 
-	response.OkWithMessage("更新成功", c)
+// 	response.OkWithMessage("更新成功", c)
 
-}
+// }
 
 // DeleteUser
-// @Summary 删除用户
+// @Summary 注销
 // @Tag 删除用户
 // @Success 200 {string} json{"code","data"}
 // @Router //user/deleteUser [delete]
@@ -207,54 +206,54 @@ func DeleteUser(c *gin.Context) {
 
 }
 
-func FindFrend(c *gin.Context) {
-	// var contact *models.Contact
-	// ownerid, err := strconv.Atoi(c.Query("ownerid"))
-	// frendid, err := strconv.Atoi(c.Query("frendid"))
-	var frend system.Frend
-
-	if err := c.ShouldBindBodyWithJSON(&frend);err!= nil {
+// 查找某个用户
+func Finduser(c *gin.Context) {
+	var user system.FindUser
+	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	contact, err := models.GetFrend(frend.OwnerId, frend.FrendId); 
+	founduser, err := models.FindUserByID(user.UserId)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	response.OkWithDetailed(contact, "查找成功", c)
+	response.OkWithDetailed(founduser, "查找成功", c)
 }
 
-func FindFrends(c *gin.Context) {
-	var frendpayload system.FrendsPayload
+// 查找用户所有好友
+func LoadFriends(c *gin.Context) {
+	var friendpayload system.LoadFriendsPayload
 	// userid, err := strconv.Atoi(c.Query("userid"))
-	err := c.ShouldBindJSON(&frendpayload)
+	err := c.ShouldBindJSON(&friendpayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	userid, _ := strconv.Atoi(frendpayload.UserId)
-
-	frendpayload.Users, err = models.GetFrends(userid)
+	users, err := models.FindFriendsByUserID(friendpayload.UserId)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-
-	response.OkWithDetailed(frendpayload.Users, "查找成功", c)
-
+	// 封装rows
+	data := gin.H{
+		"Rows": users,
+	}
+	response.OkWithDetailed(data, "返回所有好友成功", c)
 }
 
-func AddFrend(c *gin.Context) {
-	owner, err := strconv.Atoi(c.Query("ownerid"))
-	frend, err := strconv.Atoi(c.Query("frendid"))
+// 用户添加好友
+func AddFriend(c *gin.Context) {
+	var addfriend system.AddFriend
+
+	err := c.ShouldBindJSON(&addfriend)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	err = models.AddFrend(owner, frend)
+	err = models.AddFrend(&addfriend)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -263,15 +262,18 @@ func AddFrend(c *gin.Context) {
 	response.OkWithMessage("添加成功", c)
 }
 
+// 用户创建群组
 func CreateGroup(c *gin.Context) {
-	owner, err := strconv.Atoi(c.Query("ownerid"))
-	groupName := c.Query("groupname")
+	// owner, err := strconv.Atoi(c.Query("ownerid"))
+	// groupName := c.Query("groupname")
+	var creategroup system.CreatGroup
+	err := c.ShouldBindJSON(&creategroup)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	group, err := models.CreateGroup(owner, groupName)
+	group, err := models.CreateGroup(creategroup)
 	if err != nil {
 		response.FailWithDetailed(group, err.Error(), c)
 		return
@@ -280,29 +282,101 @@ func CreateGroup(c *gin.Context) {
 	response.OkWithDetailed(group, "创建群组成功", c)
 }
 
-func FindGroup(c *gin.Context) {
-	groupName := c.Query("groupname")
-	group, err := models.FindGroupByName(groupName)
+// 查找单个group
+// func FindGroup(c *gin.Context) {
+// 	groupName := c.Query("groupname")
+// 	group, err := models.FindGroupByName(groupName)
+// 	if err != nil {
+// 		response.FailWithDetailed(group, err.Error(), c)
+// 		return
+// 	}
+// 	response.OkWithDetailed(group, "查找群组成功", c)
+// }
+
+// 返回群列表
+func LoadGroups(c *gin.Context) {
+	var loadgroups system.LoadGroups
+	err := c.ShouldBindJSON(&loadgroups)
 	if err != nil {
-		response.FailWithDetailed(group, err.Error(), c)
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	response.OkWithDetailed(group, "查找群组成功", c)
+
+	groups, err := models.FindGroupsByUserID(loadgroups.UserId)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	// 封装Rows
+	data := gin.H{
+		"Rows": groups,
+	}
+	response.OkWithDetailed(data, "查找群组成功", c)
 }
 
+// 加入群组
 func AddGroup(c *gin.Context) {
+	var addGroup system.AddGroup
+	err := c.ShouldBindJSON(&addGroup)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
 
+	if err = models.AddGroup(&addGroup); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithMessage("加入成功", c)
 }
 
+// websocket需要序列化反序列化数据，而不是绑定
 func WsHandler(c *gin.Context) {
-	var msg models.Message
-	// 这里怎么得到这些信息，用apifox测试好像不行
-	FormId := c.Query("FormId")
-	TargetId := c.Query("TargetId")
-	Content := c.Query("Content")
+	var authPayload system.AuthMessage
 
-	msg.FromId, _ = strconv.Atoi(FormId)
-	msg.TargetId, _ = strconv.Atoi(TargetId)
-	msg.Content = Content
-	models.Myws(msg, c)
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  512,
+		WriteBufferSize: 512,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+	// 升级为webdsocket连接
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+
+	// 从连接中读取数据
+	_, data, err := ws.ReadMessage()
+	if err != nil {
+		return
+	}
+
+	// 反序列化
+	err = json.Unmarshal(data, &authPayload)
+	if err != nil {
+		return
+	}
+
+	// 验证token
+	// if authPayload.cmd != 1 {
+
+	// }
+
+	// 不从query里面获取参数
+	// err:=c.ShouldBindJSON(&authPayload)
+	// if err != nil {
+	// 	response.FailWithMessage(err.Error(), c)
+	// 	return
+	// }
+
+	// 验证token
+	// 自定义一个命令号, e.g., 1代表认证
+	// if cmd == 1{
+
+	// }
+
+	models.Myws(ws, authPayload.UserId)
 }

@@ -110,6 +110,8 @@ Core.prototype.api=function(uri){
         return config.serverUrl+"/"+uri
     }
 }
+
+// 这里控制前端发送的格式，使得后端绑定参数
 Core.prototype.post=function(uri,data,fn){
 	var url = this.api(uri)
     return new Promise(function (resolve, reject) {
