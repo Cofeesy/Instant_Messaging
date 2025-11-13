@@ -41,11 +41,12 @@ func InitRouter() *gin.Engine {
 	r.GET("user/findUser",service.Finduser)
 	// r.POST("/user/createUser", service.CreateUser)
 	// r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
-	r.PUT("/user/updateUserInfo", service.UpdateUserInfo)
+	r.POST("/user/updateUserInfo", service.UpdateUserInfo)
 	// 用户注销
 	r.DELETE("/user/deleteUser", service.DeleteUser)
 
 	// contact
+	r.GET("/findFriend",service.FindFriend)
 	r.POST("/findFriends",service.LoadFriends)
 	r.POST("/addFriend",service.AddFriend)
 
@@ -54,6 +55,7 @@ func InitRouter() *gin.Engine {
 	r.POST("/group/joinGroup",service.AddGroup)
 	r.POST("/group/loadgroups",service.LoadGroups)
 	r.POST("/group/createGroup",service.CreateGroup)
+	// 以上都已经Api测试过,ok
 
 	r.POST("/attach/upload",)
 	

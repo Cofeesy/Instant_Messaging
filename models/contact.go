@@ -18,7 +18,7 @@ type Contact struct {
 	// 和谁的关系,是一个userid吗？
 	TargetId uint `json:"targetid"`
 	// 关系是什么，好友？群关系？
-	Relation int `json:"relation"` //0:好友 1:群聊
+	Relation int `json:"relation"` //1:好友 2:群聊
 }
 
 func (contact *Contact) TableName() string {
@@ -27,12 +27,16 @@ func (contact *Contact) TableName() string {
 
 // TODO:
 // 返回指定的好友信息
-func GetFrend(ownerid, targetid uint) (*Contact, error) {
+func FindFrend(ownerid, targetid uint) (*Contact, error) {
 	var contact Contact
 	// TODO:先查找关系
 
 	// TODO:再返回具体好友
-	if err := db.Where("owner_id=? AND target_id=? AND relation=?", ownerid, targetid, 1).Find(&contact).Error; err != nil {
+	err := db.Where("owner_id=? AND target_id=? AND relation=?", ownerid, targetid, 1).First(&contact).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.New("你尚未添加该好友")
+		}
 		return nil, err
 	}
 	// // TODO:这里不是返回关系
@@ -57,7 +61,7 @@ func FindFriendsByUserID(ownerid uint) ([]*User_Basic, error) {
 	if len(searchid) == 0 {
 		return nil, errors.New("你尚未添加任何好友")
 	}
-	
+
 	// 通过id查找user
 	users := make([]*User_Basic, 0)
 	if err := db.Where("id IN ?", searchid).Find(&users).Error; err != nil {
@@ -87,11 +91,18 @@ func AddFrend(addPayload *system.AddFriend) error {
 	// 	tx.Rollback()
 	// 	return errors.New("已添加过好友")
 	// }
-	// 查找是否存在
+	// 查找是否存在用户
 	var user *User_Basic
 	user, err := FindUserByName(addPayload.FriendName)
 	if err != nil {
-		return err
+		return errors.New("不存在该用户")
+	}
+
+	// 查找是否存在关系
+	_, err = FindFrend(addPayload.OwnerId, user.ID)
+	// 不等于nil说明已经找到
+	if err == nil {
+		return errors.New("已经添加过该好友")
 	}
 
 	// 双向创建关系1

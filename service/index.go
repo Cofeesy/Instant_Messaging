@@ -1,12 +1,12 @@
 package service
 
 import (
+	"fmt"
 	"gin_chat/common/response"
 	"gin_chat/models"
-	"html/template"
 	"github.com/gin-gonic/gin"
+	"html/template"
 	"strconv"
-	"fmt"
 )
 
 // Server-Side Rendering, SSR，后端渲染的项目，不是前后端分离的
@@ -64,7 +64,7 @@ func ToChat(c *gin.Context) {
 	token := c.Query("token")
 	user := models.User_Basic{}
 	user.ID = uint(userId)
-	user.LoginToken = token	
+	user.LoginToken = token
 	fmt.Println("ToChat>>>>>>>>", user)
 	// 返回给前端的数据
 	t.Execute(c.Writer, user)

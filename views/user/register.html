@@ -20,13 +20,13 @@
     <div class="mui-content register-page" id="pageapp">
         <form id='login-form' class="mui-input-group register-form">
             <div class="mui-input-row">
-                <input v-model="user.name" placeholder="请输入用户名" type="text" class="mui-input-clear mui-input">
+                <input v-model="user.username" placeholder="请输入用户名" type="text" class="mui-input-clear mui-input">
             </div>
             <div class="mui-input-row">
                 <input v-model="user.password" placeholder="请输入密码" type="password" class="mui-input-clear mui-input">
             </div>
             <div class="mui-input-row"> 
-                <input v-model="user.identity" placeholder="再输入密码" type="password" class="mui-input-clear mui-input">
+                <input v-model="user.repassword" placeholder="再输入密码" type="password" class="mui-input-clear mui-input">
             </div>
         </form>
         <div class="mui-content-padded">
@@ -47,9 +47,9 @@
         data: function () {
             return {
                 user: {
-                    name: "",
+                    username: "",
                     password: "",
-                    identity: "",
+                    repassword: "",
                 }
             }
         },

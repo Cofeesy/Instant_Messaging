@@ -23,11 +23,11 @@ import (
 // @Success 200 {string} json{"code","data"}
 // @Router /user/getUserList [get]
 func GetUserList(c *gin.Context) {
-	data, err := models.GetUserList()
+	userList, err := models.GetUserList()
 	if err != nil {
-		response.FailWithDetailed(data, err.Error(), c)
+		response.FailWithMessage("查询失败",c)
 	}
-	response.Ok(c)
+	response.OkWithData(userList,c)
 }
 
 // 测试成功，应该能看到数据库该用户并且该用户有salt值
@@ -43,7 +43,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if user_register.Password != user_register.Identity {
+	if user_register.Password != user_register.Repassword {
 		response.FailWithMessage("两次密码不一致", c)
 		return
 	}
@@ -120,7 +120,7 @@ func UpdateUserInfo(c *gin.Context) {
 	if err := validate.Var(user.Username, "omitempty,min=2,max=100"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	} else if err := validate.Var(user.Phone, "omitempty,len=3"); err != nil {
+	} else if err := validate.Var(user.Phone, "omitempty"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	} else if err := validate.Var(user.Email, "omitempty,email"); err != nil {
@@ -237,6 +237,7 @@ func LoadFriends(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
+
 	// 封装rows
 	data := gin.H{
 		"Rows": users,
@@ -260,6 +261,23 @@ func AddFriend(c *gin.Context) {
 	}
 
 	response.OkWithMessage("添加成功", c)
+}
+
+func FindFriend(c *gin.Context) {
+	var findFriend system.FindFriend
+	err := c.ShouldBindJSON(&findFriend)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	contact,err:=models.FindFrend(findFriend.UserId,findFriend.FriendId)
+	if err!=nil{
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(contact,"查找成功", c)
 }
 
 // 用户创建群组

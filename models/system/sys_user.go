@@ -6,9 +6,9 @@ package system
 
 // 这个json要和前端一致
 type User_Register struct {
-	Name     string `json:"name" gorm:"unique;not null" validate:"required"`
+	Name     string `json:"username" gorm:"unique;not null" validate:"required"`
 	Password string `json:"password" validate:"required,min=2,max=20"`
-	Identity string `json:"identity"`
+	Repassword string `json:"repassword"`
 	Salt     string `json:"salt"`
 }
 
@@ -45,6 +45,13 @@ type AddFriend struct {
 	OwnerId uint `json:"userid"`
 	// 要添加的好友的名字
 	FriendName string `json:"friendname"`
+}
+
+type FindFriend struct {
+	// 自己的id
+	UserId uint `json:"userid"`
+	// 好友的id
+	FriendId uint `json:"friendid"`
 }
 
 type CreatGroup struct {

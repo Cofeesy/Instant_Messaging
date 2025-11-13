@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// TODO:用关系的话怎么标记群主呢？可以在关系中用一个字段标记IsGroupMaster
 type Group struct {
 	gorm.Model
 	OwnerId uint `json:"ownerid"`
@@ -17,7 +18,7 @@ type Group struct {
 	// 群描述
 	Description string `json:"description"`
 	// 群头像
-	Img string  `json:"img"`
+	Img string `json:"img"`
 }
 
 func (group *Group) TableName() string {
@@ -41,7 +42,13 @@ func CreateGroup(sysgroup system.CreatGroup) (*Group, error) {
 		GroupNumber: 11,
 		GroupName:   sysgroup.GroupName,
 		Description: sysgroup.Memo,
-		Img: sysgroup.Icon,
+		Img:         sysgroup.Icon,
+	}
+
+	// 查找该群是否存在
+	_, err := FindGroupByName(sysgroup.GroupName)
+	if err == nil {
+		return nil, errors.New("该群名已经被使用")
 	}
 	if err := db.Create(&group).Error; err != nil {
 		tx.Rollback()
@@ -52,6 +59,8 @@ func CreateGroup(sysgroup system.CreatGroup) (*Group, error) {
 	contact := Contact{
 		OwnerId:  sysgroup.OwnerId,
 		TargetId: group.ID,
+		// 关系2是群关系
+		Relation: 2,
 	}
 	if err := db.Create(&contact).Error; err != nil {
 		tx.Rollback()
@@ -76,6 +85,12 @@ func AddGroup(addGroup *system.AddGroup) error {
 		return errors.New("群不存在")
 	}
 
+	// 搜索关系
+	var cont Contact
+	row := tx.Where("owner_id=? AND target_id=? AND relation=?", addGroup.UserId, group.ID, 2).First(&cont).RowsAffected
+	if row != 0 {
+		return errors.New("你已经加过该群")
+	}
 	// 创建关系
 	contact := Contact{
 		OwnerId:  addGroup.UserId,
