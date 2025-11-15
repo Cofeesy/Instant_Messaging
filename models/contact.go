@@ -48,7 +48,7 @@ func FindFrend(ownerid, targetid uint) (*Contact, error) {
 func FindFriendsByUserID(ownerid uint) ([]*User_Basic, error) {
 	contacts := make([]*Contact, 0)
 	// 查找所有好友的关系表
-	if err := db.Where("owner_id=?", ownerid).Find(&contacts).Error; err != nil {
+	if err := db.Where("owner_id=? AND relation=?", ownerid, 1).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 	println(contacts)
@@ -91,15 +91,16 @@ func AddFrend(addPayload *system.AddFriend) error {
 	// 	tx.Rollback()
 	// 	return errors.New("已添加过好友")
 	// }
-	// 查找是否存在用户
-	var user *User_Basic
-	user, err := FindUserByName(addPayload.FriendName)
+
+	// 查找是否存在该用户
+	var friend *User_Basic
+	friend, err := FindUserByName(addPayload.FriendName)
 	if err != nil {
 		return errors.New("不存在该用户")
 	}
 
 	// 查找是否存在关系
-	_, err = FindFrend(addPayload.OwnerId, user.ID)
+	_, err = FindFrend(addPayload.UserId, friend.ID)
 	// 不等于nil说明已经找到
 	if err == nil {
 		return errors.New("已经添加过该好友")
@@ -107,8 +108,8 @@ func AddFrend(addPayload *system.AddFriend) error {
 
 	// 双向创建关系1
 	contact1 := Contact{
-		OwnerId:  addPayload.OwnerId,
-		TargetId: user.ID,
+		OwnerId:  addPayload.UserId,
+		TargetId: friend.ID,
 		Relation: 1,
 	}
 	if err := tx.Create(&contact1).Error; err != nil {
@@ -118,8 +119,8 @@ func AddFrend(addPayload *system.AddFriend) error {
 
 	// 双向创建关系2
 	contact2 := Contact{
-		OwnerId:  user.ID,
-		TargetId: addPayload.OwnerId,
+		OwnerId:  friend.ID,
+		TargetId: addPayload.UserId,
 		Relation: 1,
 	}
 	if err := tx.Create(&contact2).Error; err != nil {

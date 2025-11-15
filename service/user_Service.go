@@ -349,6 +349,11 @@ func AddGroup(c *gin.Context) {
 	response.OkWithMessage("加入成功", c)
 }
 
+// redis
+func RedisMsg(c *gin.Context){
+
+}
+
 // websocket需要序列化反序列化数据，而不是绑定
 func WsHandler(c *gin.Context) {
 	var authPayload system.AuthMessage
@@ -378,6 +383,8 @@ func WsHandler(c *gin.Context) {
 		return
 	}
 
+	// fmt.Println("<<<<<<<<<<<",authPayload)
+
 	// 验证token
 	// if authPayload.cmd != 1 {
 
@@ -395,6 +402,7 @@ func WsHandler(c *gin.Context) {
 	// if cmd == 1{
 
 	// }
+	// fmt.Println(">>>>>>>>>>>",authPayload.UserId)
 
 	models.Myws(ws, authPayload.UserId)
 }

@@ -30,7 +30,8 @@
 
 
     function userid() {
-        return parseInt(util.parseQuery("userid"))
+        var id = sessionStorage.getItem("userid");
+        return id ? parseInt(id, 10) : 0;
     }
     var app = new Vue(
         {
@@ -50,14 +51,14 @@
                     "ownerId": "",
                     "icon": "",
                     "cate": "",
-                    "name": "",
+                    "username": "",
                     "memo": "",
                 },
                 //用户信息
                 info: {
                     "id": "",
                     "icon": "",
-                    "name": "",
+                    "username": "",
                 },
                 isDisable: true,
                 isLoadMore: false,
@@ -156,10 +157,10 @@
                 initUser() {
                     let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
                     this.info.icon = userInfo.Avatar;
-                    this.info.name = userInfo.Name;
+                    this.info.username = userInfo.username;
                     this.info.id = userInfo.ID;
                     this.profile.avatar = userInfo.Avatar;
-                    this.profile.nickname = userInfo.Name;
+                    this.profile.nickname = userInfo.username;
                 },
                 playaudio: function (url) {
                     document.getElementById('audio4play').src = url;
@@ -266,8 +267,7 @@
                     mui.alert("请加微信号msb-shenzhuan索取")
                 },
                 showmsg: function (user, msg, isReverse, isFirst) {
-                    //console.log(">>>>>>>>>>>", user)
-                    // console.log(">>>>>>>>>>>", msg)
+                    
                     var data = {
                     }
                     data.ismine = userid() == msg.userid;
@@ -362,20 +362,32 @@
                     this.end = 9;
                     if (this.isDisable) {
                         //首次读取某个用户的消息记录
-                        if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
-                            utils.post("user/redisMsg", { useridA: userid(), useridB: user.ID, start: this.start, end: this.end, isRev: false }, function (res) {
-                                //循环读取的消息记录 并显示
-                                for (var i in res.Total) {
-                                    this.showmsg(user, JSON.parse(res.Total[i]), false, true)
-                                }
-                            }.bind(this))
-                            this.isReadRedisMsg.push(user.ID)
-                        }
+                        // if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
+                        //     utils.post("user/redisMsg", { useridA: userid(), useridB: user.ID, start: this.start, end: this.end, isRev: false }, function (res) {
+                        //         //循环读取的消息记录 并显示
+                        //         for (var i in res.Total) {
+                        //             this.showmsg(user, JSON.parse(res.Total[i]), false, true)
+                        //         }
+                        //     }.bind(this))
+                        //     this.isReadRedisMsg.push(user.ID)
+                        // }
+                        // if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
+                        //     util.post("user/redisMsg", { userIdA: userid(), userIdB: user.ID, start: this.start, end: this.end, isRev: false })
+                        //         .then(function (res) { // 使用 .then()
+                        //             if (res.code === 0 && res.data) {
+                        //                 for (var i in res.data.Total) {
+                        //                     this.showmsg(user, JSON.parse(res.data.Total[i]), false, true);
+                        //                 }
+                        //             }
+                        //         }.bind(this)) // .bind(this) 在这里依然有效
+                        //         .catch(function(err){ mui.toast('加载历史消息失败'); });
+                        //     this.isReadRedisMsg.push(user.ID);
+                        // }
 
                         this.setTimeFlag()
                         //console.log(user)
                         this.win = "single";
-                        this.title = "和" + user.Name + "聊天中";
+                        this.title = "和" + user.username + "聊天中";
                         this.otherAvatar = user.Avatar;
                         this.msgcontext.TargetId = parseInt(user.ID);
                         this.msgcontext.Type = 1;
@@ -416,22 +428,38 @@
                     if (this.isDisable) {
                         this.setTimeFlag()
                         this.win = "group";
-                        this.title = group.Name;
+                        this.title = group.groupname;
                         this.msgcontext.TargetId = parseInt(group.ID);
                         this.msgcontext.Type = 2;
                     }
                 },
+                // loaduserinfo: function (userid, cb) {
+                //     userid = "" + userid;
+                //     console.log(">>>> " + userid)
+                //     var userinfo = this.usermap[userid];
+                //     if (!userinfo) {
+                //         utils.post("user/findUser", { userid: parseInt(userid) }, function (res) {
+                //             cb(res.Data);
+                //             this.usermap[userid] = res.Data;
+                //         }.bind(this))
+                //     } else {
+                //         cb(userinfo)
+                //     }
+                // },
                 loaduserinfo: function (userid, cb) {
                     userid = "" + userid;
-                    console.log(">>>> " + userid)
                     var userinfo = this.usermap[userid];
                     if (!userinfo) {
-                        utils.post("user/find", { userid: parseInt(userid) }, function (res) {
-                            cb(res.Data);
-                            this.usermap[userid] = res.Data;
-                        }.bind(this))
+                        util.post("user/find", { userId: parseInt(userid) })
+                            .then(function (res) { // 使用 .then()
+                                if (res.code === 0 && res.data) {
+                                    cb(res.data);
+                                    this.usermap[userid] = res.data;
+                                }
+                            }.bind(this))
+                            .catch(function(err){ console.error('获取用户信息失败', err); });
                     } else {
-                        cb(userinfo)
+                        cb(userinfo);
                     }
                 },
                 onmessage: function (data) {
@@ -495,10 +523,12 @@
                     // 步骤 3: 构造一个 "认证包" (Auth Packet)
                     var authMessage = {
                         cmd: 1, // 自定义一个命令号, e.g., 1代表认证
-                        data: {
-                            userId: userid(),
-                            token: util.parseQuery("token")
-                        }
+                        // data: {
+                        //     userid: userid(),
+                        //     token: util.parseQuery("token")
+                        // }
+                        userid: userid(),
+                        token: util.parseQuery("token")
                     };
                     
                     // 步骤 4: 将认证包作为第一条消息发送给服务器
@@ -536,24 +566,73 @@
                 sendmsg: function () {
 
                 },
+                // findfriends: function () {
+                //     var that = this;
+                //     console.log("Calling util.post('findFriends')..."); // 确认函数被调用
+                //     // post("searchFriends", { userid: userid() }, function (res) {
+                //     util.post("findFriends", { userid: userid() }, function (res) {
+                //         console.log("Promise resolved! Server response:", res); // 关键日志
+                //         that.friends = res.data.Rows || [];
+                //         // console.log(res.data.Rows)
+                //         var usermap = this.usermap;
+                //         for (var i in res.data.Rows) {
+                //             var k = "" + res.data.Rows[i].ID
+                //             usermap[k] = res.data.Rows[i];
+                //         }
+                //         this.usermap = usermap;
+                //     }.bind(this))
+                // },
                 findfriends: function () {
-                    var that = this;
-                    // post("searchFriends", { userid: userid() }, function (res) {
-                    util.post("findFriends", { userid: userid() }, function (res) {
-                        that.friends = res.Rows || [];
-                        var usermap = this.usermap;
-                        for (var i in res.Rows) {
-                            var k = "" + res.Rows[i].ID
-                            usermap[k] = res.Rows[i];
-                        }
-                        this.usermap = usermap;
-                    }.bind(this))
+                    var that = this; // 在 Promise 外部保存 this 的引用
+                    console.log("Calling util.post('findFriends')..."); 
+
+                    // util.post 返回一个 Promise
+                    util.post("findFriends", { userid: userid() }) 
+                        .then(function (res) {
+                            // 当 Promise 成功解决 (resolved) 时，这里的代码会被执行
+                            console.log("Promise resolved! Server response:", res); // 现在这个日志应该会打印了！
+                            
+                            // 检查后端返回的 code 是否为 0
+                            if (res.code === 0 && res.data) {
+                                that.friends = res.data.Rows || [];
+                                
+                                var usermap = that.usermap; // 使用 that 来访问 Vue 实例
+                                for (var i in res.data.Rows) {
+                                    var k = "" + res.data.Rows[i].ID;
+                                    usermap[k] = res.data.Rows[i];
+                                }
+                                that.usermap = usermap; // 使用 that
+                            } else {
+                                // 如果后端返回错误码，也打印出来
+                                console.error("Server returned an error:", res.msg);
+                                mui.toast(res.msg || "加载好友失败");
+                            }
+                        })
+                        .catch(function (err) {
+                            // 当 Promise 被拒绝 (rejected) 时（例如网络错误、JSON解析失败），这里的代码会被执行
+                            console.error("Promise rejected! An error occurred:", err);
+                            mui.toast(err.msg || "网络请求失败");
+                        });
                 },
+                // loadgroups: function () {
+                //     var that = this;
+                //     util.post("group/loadgroups", { userid: userid() }, function (res) {
+                //         that.communitys = res.data.Rows || [];
+                //     })
+                // },
                 loadgroups: function () {
                     var that = this;
-                    util.post("group/loadgroups", { userid: userid() }, function (res) {
-                        that.communitys = res.Rows || [];
-                    })
+                    util.post("group/loadgroups", { userid: userid() }) // 根据您之前的代码，URL是 loadgroups, 参数是 ownerId
+                        .then(function (res) {
+                            if (res.code === 0 && res.data) {
+                                that.communitys = res.data.Rows || [];
+                            } else {
+                                mui.toast(res.msg || '加载群组列表失败');
+                            }
+                        })
+                        .catch(function (err) {
+                            mui.toast(err.msg || '网络错误');
+                        });
                 },
                 addfriend: function () {
                     //console.log("addfriend....")
@@ -574,20 +653,39 @@
                     document.querySelector('.mui-popup-input input').type = 'text';
 
                 },
+                // _addfriend: function (dstobj) {
+                //     //防止一次点击 穿透访问多次
+                //     if (this.isDisable) {
+                //         this.setTimeFlag()
+                //         //console.log("_addfriend....")
+                //         var that = this
+                //         utils.post("contact/addfriend", { targetName: dstobj, userid: userid() }, function (res) {
+                //             if (res.Code == 0) {
+                //                 mui.toast("添加成功");
+                //                 that.loadfriends();
+                //             } else {
+                //                 mui.toast(res.Msg);
+                //             }
+                //         })
+                //     }
+                // },
                 _addfriend: function (dstobj) {
-                    //防止一次点击 穿透访问多次
                     if (this.isDisable) {
-                        this.setTimeFlag()
-                        //console.log("_addfriend....")
-                        var that = this
-                        utils.post("contact/addfriend", { targetName: dstobj, userid: userid() }, function (res) {
-                            if (res.Code == 0) {
-                                mui.toast("添加成功");
-                                that.loadfriends();
-                            } else {
-                                mui.toast(res.Msg);
-                            }
-                        })
+                        this.setTimeFlag();
+                        var that = this;
+                        // 假设这里调用的是 util.post
+                        util.post("contact/addfriend", {userid: userid(), friendname: dstobj })
+                            .then(function (res) {
+                                if (res.code === 0) {
+                                    mui.toast("添加成功");
+                                    that.findfriends(); // 重新加载好友列表
+                                } else {
+                                    mui.toast(res.msg || '添加好友失败');
+                                }
+                            })
+                            .catch(function (err) {
+                                mui.toast(err.msg || '网络错误');
+                            });
                     }
                 },
                 //个人资料修改显示
@@ -606,7 +704,7 @@
                     //console.log("createcommunity")
                     this.com.ownerId = userid()
                     console.log(this.com)
-                    util.post("/contact/createCommunity", this.com).then(res => {
+                    util.post("/group/createGroup", this.com).then(res => {
                         console.log(res)
                         if (res.Code != 0) {
                             mui.toast(res.Msg)
@@ -622,11 +720,11 @@
                 updateUserInfo() {
                     //console.log("createcommunity")
                     this.info.id = userid()
-                    util.post("/user/updateUser", this.info).then(res => {
+                    util.post("/user/updateUserInfo", this.info).then(res => {
                         console.log(res)
                         let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
                         userInfo.Avatar = this.info.icon;
-                        userInfo.Name = this.info.name;
+                        userInfo.username = this.info.username;
                         sessionStorage.setItem('userinfo', JSON.stringify(userInfo))
                         if (res.Code != 0) {
                             mui.toast(res.message)
@@ -646,20 +744,39 @@
                     this.win = "main"
                 },
 
+                // _joincomunity: function (dstobj) {
+                //     if (this.isDisable) {
+                //         this.setTimeFlag();
+                //         var that = this;
+                //         console.log(that);
+                //         utils.post("group/joinGroup", { comId: dstobj, "userid": userid() }, function (res) {
+                //             if (res.Code == 0) {
+                //                 mui.toast("添加成功");
+
+                //                 that.loadcommunitys();
+                //             } else {
+                //                 mui.toast(res.Msg);
+                //             }
+                //         })
+                //     }
+                // },
                 _joincomunity: function (dstobj) {
                     if (this.isDisable) {
                         this.setTimeFlag();
                         var that = this;
-                        console.log(that);
-                        utils.post("contact/joinGroup", { comId: dstobj, "userid": userid() }, function (res) {
-                            if (res.Code == 0) {
-                                mui.toast("添加成功");
-
-                                that.loadcommunitys();
-                            } else {
-                                mui.toast(res.Msg);
-                            }
-                        })
+                        // 假设这里调用的是 util.post
+                        util.post("contact/joinGroup", { comId: dstobj, "userId": userId() })
+                            .then(function (res) {
+                                if (res.code === 0) {
+                                    mui.toast("添加成功");
+                                    that.loadgroups(); // 调用我们已经修改好的 loadgroups
+                                } else {
+                                    mui.toast(res.msg || '加入群聊失败');
+                                }
+                            })
+                            .catch(function (err) {
+                                mui.toast(err.msg || '网络错误');
+                            });
                     }
                 },
                 joincom: function () {

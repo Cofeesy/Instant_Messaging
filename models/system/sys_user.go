@@ -42,7 +42,7 @@ type LoadFriendsPayload struct {
 
 type AddFriend struct {
 	// 自己的id
-	OwnerId uint `json:"userid"`
+	UserId uint `json:"userid"`
 	// 要添加的好友的名字
 	FriendName string `json:"friendname"`
 }
@@ -88,5 +88,7 @@ type AuthData struct{
 type AuthMessage struct{
 	// 用来验证token
 	Cmd int `json:"cmd"`
-	AuthData
+	// AuthData
+	UserId    uint   `json:"userid"`
+	Token string `json:"token"`
 }

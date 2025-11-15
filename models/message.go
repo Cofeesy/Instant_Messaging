@@ -8,18 +8,33 @@ import (
 	// "net/http"
 	"sync"
 	"time"
-
-	// "github.com/gin-gonic/gin"
+	"gorm.io/gorm"  
 	"github.com/gorilla/websocket"
 )
 
 // 消息源码
+// type Message struct {
+// 	FromId      int `json:"userid"`
+// 	TargetId    int `json:"targetid"`
+// 	Content     string `json:"content"`
+// 	MessageType int `json:"media"` //发送类型 1私聊  2群聊  3心跳
+// 	ContentType int `json:"type"` //消息类型  1文字 2表情包 3语音 4图片 /表情包
+// 	Media      int  
+// }
+
 type Message struct {
-	FromId      int
-	TargetId    int
-	Content     string
-	MessageType int //0私发 1群发 2广播
-	ContentType int //文字 图片 表情包
+	gorm.Model
+	UserId     uint  //发送者
+	TargetId   uint  //接受者
+	Type       int    //发送类型  1私聊  2群聊  3心跳
+	Media      int    //消息类型  1文字 2表情包 3语音 4图片 /表情包
+	Content    string //消息内容
+	CreateTime uint64 //创建时间
+	ReadTime   uint64 //读取时间
+	Pic        string
+	Url        string
+	Desc       string
+	Amount     int //其他数字统计
 }
 
 func (message *Message) TableName() string {
@@ -72,9 +87,9 @@ func Myws(ws *websocket.Conn, userid uint) {
 	// 这里应该执行调度
 
 	// 刚启动测试给用户发消息
-	str := "欢迎进入聊天系统"
-	strbyte, _ := json.Marshal(str)
-	SendMsgToUser(userid, strbyte)
+	// str := "欢迎进入聊天系统"
+	// strbyte, _ := json.Marshal(str)
+	// SendMsgToUser(userid, strbyte)
 
 }
 
@@ -106,7 +121,7 @@ func (client *Client) Send() {
 // 监听听并读取接受到的信息，需要一个协程持续监听，这是每一个连接进来的客户端需要做的
 func (client *Client) Recieve() {
 	// 接受监听消息
-	var Msg Message;
+	// var Msg Message;
 	for {
 		_, msg, err := client.Conn.ReadMessage()
 		if err != nil {
@@ -114,19 +129,37 @@ func (client *Client) Recieve() {
 		}
 		// 将数据序列化为代码形式
 		// 需要加指针
-		err = json.Unmarshal(msg, &Msg)
-		if err != nil {
-			fmt.Println("read2:", err.Error())
-		}
-		fmt.Println("Received message: ", Msg)
+		// err = json.Unmarshal(msg, &Msg)
+		// if err != nil {
+		// 	fmt.Println("read2:", err.Error())
+		// }
+		// fmt.Println("Received message: ", Msg)
 
-		// FIXME:解释
-		if Msg.Content == "心跳" {
-			client.HeartbeatTime = uint64(time.Now().Unix())
-			continue
-		}
+		// 接收到消息调度
+		client.dispatchMsg(msg)
+	}
+}
 
-		// 调度
+func (client *Client) dispatchMsg(msg []byte){
+	var Msg Message;
+	err := json.Unmarshal(msg, &Msg)
+	if err != nil {
+		fmt.Println("read2:", err.Error())
+	}
+	// TODO:-1的时候会报错，但不影响通信
+	switch Msg.Type{
+	// 私聊
+	case 1:
+		SendMsgToUser(Msg.TargetId,msg)
+		return
+	// 群聊
+	case 2:
+		SendMsgToGroup(Msg.TargetId,msg)
+		return
+	// 心跳
+	case 3:
+		client.HeartbeatTime = uint64(time.Now().Unix())
+		return
 	}
 }
 
@@ -136,27 +169,23 @@ func (client *Client) Recieve() {
 // 这里的“写” (conn.WriteMessage)，最终都是发生在某一个具体的 WebSocket 连接 (conn) 上的。
 // 即clientA 的 Send goroutine 只会在 clientA.conn 上写，clientB 的 Send goroutine 只会在 clientB.conn 上写。职责非常明确
 // 关键点是看谁开启了这个协程，服务器只是负责发送和接受信息
-func SendMsgToUser(userId uint, msg []byte) {
+func SendMsgToUser(targetId uint, msg []byte) {
 
 	mu.RLock()
-	client := UserToClient[userId]
+	client := UserToClient[targetId]
 	mu.RUnlock()
 
 	if client == nil {
-		log.Printf("SendMsgToUser: user %d not connected, message dropped", userId)
+		log.Printf("SendMsgToUser: user %d not connected, message dropped", targetId)
 		return
 	}
 
-	select {
-	case client.SendDataQueue <- msg:
-	default:
-		log.Printf("SendMsgToUser: user's send channel full, dropping message for user %d", userId)
-	}
+	client.SendDataQueue <- msg
 
 }
 
-// 群聊单发
-func SendMsgToGroup(GroupId int, msg Message) {
+// 群聊
+func SendMsgToGroup(GroupId uint, msg []byte) {
 
 }
 
