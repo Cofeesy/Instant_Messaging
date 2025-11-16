@@ -6,10 +6,10 @@ import (
 	"gin_chat/utils/setting"
 	"log"
 	// "net/http"
+	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 	"sync"
 	"time"
-	"gorm.io/gorm"  
-	"github.com/gorilla/websocket"
 )
 
 // 消息源码
@@ -19,13 +19,13 @@ import (
 // 	Content     string `json:"content"`
 // 	MessageType int `json:"media"` //发送类型 1私聊  2群聊  3心跳
 // 	ContentType int `json:"type"` //消息类型  1文字 2表情包 3语音 4图片 /表情包
-// 	Media      int  
+// 	Media      int
 // }
 
 type Message struct {
 	gorm.Model
-	UserId     uint  //发送者
-	TargetId   uint  //接受者
+	UserId     uint   //发送者
+	TargetId   uint   //接受者
 	Type       int    //发送类型  1私聊  2群聊  3心跳
 	Media      int    //消息类型  1文字 2表情包 3语音 4图片 /表情包
 	Content    string //消息内容
@@ -49,6 +49,8 @@ var mu sync.RWMutex
 
 // 客户端
 type Client struct {
+	// 记录用户
+	User_id uint
 	// *websocket.Conn 类型的对象。这个对象是与单个客户端进行所有通信的唯一凭证和工具。之后的所有操作都是调用这个 conn 对象的方法。
 	Conn *websocket.Conn
 
@@ -136,25 +138,38 @@ func (client *Client) Recieve() {
 		// fmt.Println("Received message: ", Msg)
 
 		// 接收到消息调度
-		client.dispatchMsg(msg)
+		client.dispatchMsg(client.User_id, msg)
 	}
 }
 
-func (client *Client) dispatchMsg(msg []byte){
-	var Msg Message;
+func (client *Client) dispatchMsg(user_id uint, msg []byte) {
+	var Msg Message
 	err := json.Unmarshal(msg, &Msg)
 	if err != nil {
 		fmt.Println("read2:", err.Error())
 	}
-	// TODO:-1的时候会报错，但不影响通信
-	switch Msg.Type{
+	// TODO:target设置-1的时候会报错，但不影响通信
+	switch Msg.Type {
 	// 私聊
 	case 1:
-		SendMsgToUser(Msg.TargetId,msg)
+		// 这里的targetid是userid
+		SendMsgToUser(Msg.TargetId, msg)
 		return
 	// 群聊
 	case 2:
-		SendMsgToGroup(Msg.TargetId,msg)
+		// 这里的id是groupid
+		// 查找群成员id
+		var contacts []Contact = make([]Contact, 0)
+		var IDs []uint = make([]uint, 0)
+		db.Where("target_id=? AND relation=?", Msg.TargetId, 2).Find(&contacts)
+		
+		for _, v := range contacts {
+			IDs = append(IDs, v.OwnerId)
+		}
+		// 除去发送用户
+		fmt.Println(">>>>>>>>>>>2:",IDs)
+		remove_ids := client.RemoveId(IDs)
+		SendMsgToGroup(remove_ids, msg)
 		return
 	// 心跳
 	case 3:
@@ -185,14 +200,32 @@ func SendMsgToUser(targetId uint, msg []byte) {
 }
 
 // 群聊
-func SendMsgToGroup(GroupId uint, msg []byte) {
-
+func SendMsgToGroup(ids []uint, msg []byte) {
+	if len(ids) == 0 {
+		return
+	}
+	fmt.Println(">>>>>>>>>>>2:",ids)
+	for _, v := range ids {
+		mu.RLock()
+		client := UserToClient[v]
+		mu.RUnlock()
+		client.SendDataQueue <- msg
+	}
 }
 
 // 系统广播，比如维护信息
 // func SendMsgToAll(){
 
 // }
+
+func (client *Client) RemoveId(a []uint) []uint {
+	for i, v := range a {
+		if v == client.User_id {
+			return append(a[:i], a[i+1:]...)
+		}
+	}
+	return a
+}
 
 // 更新用户心跳
 func (client *Client) Heartbeat(currentTime uint64) {

@@ -38,7 +38,7 @@ func InitRouter() *gin.Engine {
 
 	// user
 	r.GET("/user/getUserList", service.GetUserList)
-	r.GET("user/findUser",service.Finduser)
+	r.POST("user/findUser",service.Finduser)
 	// r.POST("/user/createUser", service.CreateUser)
 	// r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
 	r.POST("/user/updateUserInfo", service.UpdateUserInfo)
@@ -53,7 +53,7 @@ func InitRouter() *gin.Engine {
 	// group
 	// r.GET("/findGroup",service.FindGroup)
 	r.POST("/group/joinGroup",service.AddGroup)
-	r.POST("/group/loadgroups",service.LoadGroups)
+	r.POST("/group/loadGroups",service.LoadGroups)
 	r.POST("/group/createGroup",service.CreateGroup)
 	// 以上都已经Api测试过,ok
 

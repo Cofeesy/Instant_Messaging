@@ -450,7 +450,7 @@
                     userid = "" + userid;
                     var userinfo = this.usermap[userid];
                     if (!userinfo) {
-                        util.post("user/find", { userId: parseInt(userid) })
+                        util.post("user/findUser", { userId: parseInt(userid) })
                             .then(function (res) { // 使用 .then()
                                 if (res.code === 0 && res.data) {
                                     cb(res.data);
@@ -622,7 +622,7 @@
                 // },
                 loadgroups: function () {
                     var that = this;
-                    util.post("group/loadgroups", { userid: userid() }) // 根据您之前的代码，URL是 loadgroups, 参数是 ownerId
+                    util.post("group/loadGroups", { userid: userid() })
                         .then(function (res) {
                             if (res.code === 0 && res.data) {
                                 that.communitys = res.data.Rows || [];
