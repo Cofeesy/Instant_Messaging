@@ -39,7 +39,7 @@
             data: {
                 usermap: {},
                 friends: [],
-                communitys: [],
+                groups: [],
                 profile: {
                     avatar: "",
                     nickname: "",
@@ -614,18 +614,12 @@
                             mui.toast(err.msg || "网络请求失败");
                         });
                 },
-                // loadgroups: function () {
-                //     var that = this;
-                //     util.post("group/loadgroups", { userid: userid() }, function (res) {
-                //         that.communitys = res.data.Rows || [];
-                //     })
-                // },
                 loadgroups: function () {
                     var that = this;
                     util.post("group/loadGroups", { userid: userid() })
                         .then(function (res) {
                             if (res.code === 0 && res.data) {
-                                that.communitys = res.data.Rows || [];
+                                that.groups = res.data.Rows || [];
                             } else {
                                 mui.toast(res.msg || '加载群组列表失败');
                             }
@@ -700,8 +694,7 @@
                 },
 
                 //新建群提交
-                createcommunity() {
-                    //console.log("createcommunity")
+                creategroup() {
                     this.com.ownerId = userid()
                     console.log(this.com)
                     util.post("/group/createGroup", this.com).then(res => {
@@ -712,13 +705,12 @@
                             //location.replace("localhost:8081")
                             //location.href = "/"
                             mui.toast("建群成功")
-                            this.loadcommunitys();
+                            this.loadgroups();
                             //goBack()
                         }
                     })
                 },
                 updateUserInfo() {
-                    //console.log("createcommunity")
                     this.info.id = userid()
                     util.post("/user/updateUserInfo", this.info).then(res => {
                         console.log(res)
@@ -743,23 +735,6 @@
                 goBack() {
                     this.win = "main"
                 },
-
-                // _joincomunity: function (dstobj) {
-                //     if (this.isDisable) {
-                //         this.setTimeFlag();
-                //         var that = this;
-                //         console.log(that);
-                //         utils.post("group/joinGroup", { comId: dstobj, "userid": userid() }, function (res) {
-                //             if (res.Code == 0) {
-                //                 mui.toast("添加成功");
-
-                //                 that.loadcommunitys();
-                //             } else {
-                //                 mui.toast(res.Msg);
-                //             }
-                //         })
-                //     }
-                // },
                 _joincomunity: function (dstobj) {
                     if (this.isDisable) {
                         this.setTimeFlag();
