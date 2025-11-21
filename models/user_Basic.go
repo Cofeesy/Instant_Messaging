@@ -24,7 +24,7 @@ type User_Basic struct {
 	Password      string     `json:"password" validate:"required,min=2,max=20"`
 	Phone         string     `json:"phone" validate:"omitempty,len=11"`
 	Email         string     `json:"email" validate:"omitempty,email"`
-	Avatar        string 	 `json:"avatar"`//头像
+	Icon          string     `json:"icon"` //头像
 	ClientIP      string     `json:"client_ip"`
 	ClientPort    string     `json:"client_port"`
 	Salt          string     `json:"salt"`
@@ -122,16 +122,21 @@ func CreateUser(user_register *system.User_Register) error {
 }
 
 // 更新用户信息名字和电话，邮箱
-func UpdateUserInfo(name, phone, email string) error {
+func UpdateUserInfo(updateuserinfo *system.UpdateUserInfo) error {
 	var user User_Basic
-	err := db.Where("username = ?", name).First(&user).Error
+	// 检查用户名是否已经被使用
+	r := db.Where("username = ?", updateuserinfo.Username).First(&user).RowsAffected
+	if r > 0 {
+		return errors.New("该用户名已被使用")
+	}
+
+	// 根据id查找user
+	err := db.Where("id = ?", updateuserinfo.ID).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return errors.New("用户不存在")
-		}
 		return err
 	}
-	result := db.Model(&user).Updates(map[string]interface{}{"UserName": name, "Phone": phone, "Email": email})
+	
+	result := db.Model(&user).Updates(map[string]interface{}{"UserName": updateuserinfo.Username, "Phone": updateuserinfo.Phone, "Email": updateuserinfo.Email, "Icon": updateuserinfo.Icon})
 	// 这个错误由db记录
 	return result.Error
 }

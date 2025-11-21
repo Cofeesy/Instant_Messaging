@@ -36,8 +36,22 @@
             <div class="mui-input-group">
                 <div class="mui-input-row">
                     <label>昵称</label>
-                    <input v-model="info.name" id='name' type="text" class="mui-input-clear mui-input"
-                        placeholder="请输入用户昵称">
+                    <input v-model="info.username" id='username' type="text" class="mui-input-clear mui-input"
+                        placeholder="请输入新的用户名称">
+                </div>
+            </div>
+            <div class="mui-input-group">
+                <div class="mui-input-row">
+                    <label>电话</label>
+                    <input v-model="info.phone" id='phone' type="text" class="mui-input-clear mui-input"
+                        placeholder="请输入新的电话号码">
+                </div>
+            </div>
+            <div class="mui-input-group">
+                <div class="mui-input-row">
+                    <label>邮箱</label>
+                    <input v-model="info.email" id='email' type="text" class="mui-input-clear mui-input"
+                        placeholder="请输入新的邮箱">
                 </div>
             </div>
             <div class="mui-content-padded">

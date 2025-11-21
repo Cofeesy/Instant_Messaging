@@ -6,10 +6,10 @@ package system
 
 // 这个json要和前端一致
 type User_Register struct {
-	Name     string `json:"username" gorm:"unique;not null" validate:"required"`
-	Password string `json:"password" validate:"required,min=2,max=20"`
+	Name       string `json:"username" gorm:"unique;not null" validate:"required"`
+	Password   string `json:"password" validate:"required,min=2,max=20"`
 	Repassword string `json:"repassword"`
-	Salt     string `json:"salt"`
+	Salt       string `json:"salt"`
 }
 
 type User_Login struct {
@@ -19,9 +19,13 @@ type User_Login struct {
 }
 
 type UpdateUserInfo struct {
+	// 该id是更新用户信息的用户id
+	ID 		 uint   `json:"userid"`
+	// 以下信息是该用户需要更新的信息
 	Username string `json:"username" gorm:"unique;not null" validate:"required"`
 	Phone    string `json:"phone" validate:"omitempty,len=11"`
 	Email    string `json:"email" validate:"omitempty,email"`
+	Icon     string `json:"icon"`
 }
 
 type UpdateUserPasswd struct {
@@ -79,23 +83,22 @@ type AddGroup struct {
 // 	Token string `json:"token"`
 // }
 
-
-type AuthData struct{
-	UserId    uint   `json:"userid"`
-	Token string `json:"token"`
+type AuthData struct {
+	UserId uint   `json:"userid"`
+	Token  string `json:"token"`
 }
 
-type AuthMessage struct{
+type AuthMessage struct {
 	// 用来验证token
 	Cmd int `json:"cmd"`
 	// AuthData
-	UserId    uint   `json:"userid"`
-	Token string `json:"token"`
-}
-type RedisPayload struct{
 	UserId uint   `json:"userid"`
-	TargetId uint `json:"targetid"`
-	Start int64 `json:"start"`
-	End int64 `json:"end"`
-	IsReverse bool `json:"isreverse"`
+	Token  string `json:"token"`
+}
+type RedisPayload struct {
+	UserId    uint  `json:"userid"`
+	TargetId  uint  `json:"targetid"`
+	Start     int64 `json:"start"`
+	End       int64 `json:"end"`
+	IsReverse bool  `json:"isreverse"`
 }

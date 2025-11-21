@@ -161,10 +161,12 @@
             methods: {
                 initUser() {
                     let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
-                    this.info.icon = userInfo.Avatar;
+                    this.info.icon = userInfo.icon;
                     this.info.username = userInfo.username;
                     this.info.id = userInfo.ID;
-                    this.profile.avatar = userInfo.Avatar;
+                    this.info.icon = userInfo.icon;
+                    this.info.phone = userInfo.phone;
+                    this.info.email = userInfo.email;
                     this.profile.nickname = userInfo.username;
                 },
                 playaudio: function (url) {
@@ -732,15 +734,17 @@
                     })
                 },
                 updateUserInfo() {
-                    this.info.id = userid()
+                    this.info.userid = userid()
                     util.post("/user/updateUserInfo", this.info).then(res => {
                         console.log(res)
                         let userInfo = JSON.parse(sessionStorage.getItem('userinfo') || '{}');
-                        userInfo.Avatar = this.info.icon;
+                        userInfo.icon = this.info.icon;
                         userInfo.username = this.info.username;
+                        userInfo.phone = this.info.phone;
+                        userInfo.email = this.info.email;
                         sessionStorage.setItem('userinfo', JSON.stringify(userInfo))
                         if (res.Code != 0) {
-                            mui.toast(res.message)
+                            mui.toast(res.msg)
                         } else {
                             //location.replace("localhost:8081")
                             //location.href = "/"

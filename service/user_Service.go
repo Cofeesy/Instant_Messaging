@@ -111,25 +111,25 @@ func Login(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /user/updateUser [put]
 func UpdateUserInfo(c *gin.Context) {
-	var user system.UpdateUserInfo
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var updateuserinfo system.UpdateUserInfo
+	if err := c.ShouldBindJSON(&updateuserinfo ); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	validate := validator.New()
-	if err := validate.Var(user.Username, "omitempty,min=2,max=100"); err != nil {
+	if err := validate.Var(updateuserinfo .Username, "omitempty,min=2,max=100"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	} else if err := validate.Var(user.Phone, "omitempty"); err != nil {
+	} else if err := validate.Var(updateuserinfo .Phone, "omitempty"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	} else if err := validate.Var(user.Email, "omitempty,email"); err != nil {
+	} else if err := validate.Var(updateuserinfo .Email, "omitempty,email"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	if err := models.UpdateUserInfo(user.Username, user.Phone, user.Email); err != nil {
+	if err := models.UpdateUserInfo(&updateuserinfo); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
