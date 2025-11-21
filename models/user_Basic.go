@@ -24,6 +24,7 @@ type User_Basic struct {
 	Password      string     `json:"password" validate:"required,min=2,max=20"`
 	Phone         string     `json:"phone" validate:"omitempty,len=11"`
 	Email         string     `json:"email" validate:"omitempty,email"`
+	Avatar        string 	 `json:"avatar"`//头像
 	ClientIP      string     `json:"client_ip"`
 	ClientPort    string     `json:"client_port"`
 	Salt          string     `json:"salt"`

@@ -57,9 +57,9 @@ func InitRouter() *gin.Engine {
 	r.POST("/group/createGroup",service.CreateGroup)
 	// 以上都已经Api测试过,ok
 
-	r.POST("user/redisMsg",service.RedisMsg)
+	r.POST("/user/redisMsg",service.RedisMsg)
 
-	r.POST("/attach/upload",)
+	r.POST("/attach/upload",service.UploadInfo)
 	
 
 	return r

@@ -23,8 +23,8 @@ body {
   margin: 10px auto 0 auto;
   padding: 0 10px 0 10px;
   list-style: none;
-  overflow-y: scroll;
-  overflow-x: hidden;
+  /* overflow-y: scroll;
+  overflow-x: hidden; */
   padding-bottom: 45px;
 }
 
@@ -49,7 +49,7 @@ body {
 @media all and (max-width: 767px) {
   .chat-thread {
     width: 100%;
-    height: 100%;
+    /* height: 100%; */
   }
 
   .chat-window {
@@ -62,7 +62,7 @@ body {
 @media all and (min-width: 768px) {
   .chat-thread {
     width: 100%;
-    height: 100%;
+    /* height: 100%; */
   }
 
   .chat-window {
@@ -311,19 +311,68 @@ body {
   box-shadow: none;
 }
 
-#convo .mui-scroll-wrapper {
+/* #convo .mui-scroll-wrapper {
   padding-top: 50px;
   padding-bottom: 50px;
-}
+} */
 
-#convo .mui-scroll-wrapper .mui-scroll {}
+/* #convo .mui-scroll-wrapper .mui-scroll {} */
 
-#convo .mui-scroll-wrapper .mui-scroll .mui-control-item {
+/* #convo .mui-scroll-wrapper .mui-scroll .mui-control-item {
   display: block;
   height: 100px;
-}
+} */
 
-#panels {
+/* 强制修正滚动容器的位置 */
+/* #convo .mui-scroll-wrapper {
+    position: absolute;
+    top: 45px;    
+    bottom: 50px; 
+    width: 100%;
+    height: auto; 
+    overflow: hidden; 
+} */
+
+/* #panels {
   z-index: 2;
   padding-top: 5px;
+} */
+
+/* 1. 滚动容器：必须绝对定位，撑满中间区域 */
+#convo .mui-scroll-wrapper {
+    position: absolute;
+    top: 45px;    /* 避开顶部 Header */
+    bottom: 60px; /* 避开底部输入框 (比输入框高度稍微多一点，防止遮挡) */
+    width: 100%;
+    height: auto; 
+    overflow: hidden; /* 隐藏原生滚动条，交给 MUI 处理 */
+    z-index: 1;       /* 确保能被手指摸到 */
+    padding: 0;       /* 容器本身不要 padding，交给内部 */
 }
+
+/* 2. 滚动层核心：MUI 需要这个层级来做 transform 动画 */
+#convo .mui-scroll-wrapper .mui-scroll {
+    min-height: 101%; /* 【关键】强制比容器高 1px，激活滚动能力 */
+    padding-bottom: 20px; /* 底部留白，防止最后一条消息贴底 */
+}
+
+/* 3. 聊天列表：去掉 margin，防止高度计算塌陷 */
+.chat-thread {
+    margin: 0 !important;  /* 强制去掉外边距 */
+    padding: 10px;         /* 使用内边距代替 */
+    list-style: none;
+    width: 100%;
+    overflow: visible;     /* 允许内容撑开 */
+}
+
+.chat-thread .content .pic {
+    max-width: 300px;      /* 限制最大宽度，防止撑破屏幕 */
+    max-height: 350px;     /* 限制最大高度 */
+    width: auto;           /* 宽度自动，保持比例 */
+    height: auto;          /* 高度自动，保持比例 */
+    border-radius: 8px;    /* 给图片加个圆角，更好看 */
+    display: block;        /* 块级显示 */
+    margin-top: 5px;       /* 图片和上面文字稍微拉开点距离 */
+    cursor: pointer;       /* 鼠标放上去显示手型 */
+}
+

@@ -16,7 +16,7 @@
                || ((item.msg.Type==2) && ( item.msg.TargetId==msgcontext.TargetId ))  群聊判断
                     -->
                     <li class="chat " :class="item.ismine?'mine':'other'" v-for="item in msglist" v-if=" item.msg.Type==msgcontext.Type  
-                    && ((item.msg.Type==1) && (item.ismine? item.msg.TargetId==msgcontext.TargetId : item.msg.userid==msgcontext.TargetId ))
+                    && ((item.msg.Type==1) && (item.ismine? item.msg.TargetId==msgcontext.TargetId : item.msg.UserId==msgcontext.TargetId ))
                     || ((item.msg.Type==2) && ( item.msg.TargetId==msgcontext.TargetId ))
                     ">
                         <!--  
@@ -32,8 +32,8 @@
                         <span></span>
                         <div class="content">
                             <div v-if="item.msg.Media==1" v-text="item.msg.Content"></div>
-                            <img class="pic" v-if="item.msg.Media==4" :src="item.msg.url" />
-                            <div v-if="item.msg.Media==3" @tap="playaudio(item.msg.url)">
+                            <img class="pic" v-if="item.msg.Media==4" :src="item.msg.Url" />
+                            <div v-if="item.msg.Media==3" @tap="playaudio(item.msg.Url)">
                                 <img class="audio" src="/asset/images/audiom.png" />
                                 <span v-text="item.msg.amount"></span>
                             </div>

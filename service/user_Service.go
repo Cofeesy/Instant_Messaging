@@ -9,6 +9,8 @@ import (
 	"gin_chat/utils"
 	"math/rand"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -25,9 +27,9 @@ import (
 func GetUserList(c *gin.Context) {
 	userList, err := models.GetUserList()
 	if err != nil {
-		response.FailWithMessage("查询失败",c)
+		response.FailWithMessage("查询失败", c)
 	}
-	response.OkWithData(userList,c)
+	response.OkWithData(userList, c)
 }
 
 // 测试成功，应该能看到数据库该用户并且该用户有salt值
@@ -100,7 +102,6 @@ func Login(c *gin.Context) {
 	// 登陆颁发,那这个东西是存到数据库吗？
 	token, err := utils.GenerateToken(user.Username, user.Password)
 	println("token>>>>>>>>", token)
-
 	response.OkWithDetailed(user, "登陆成功", c)
 }
 
@@ -271,13 +272,13 @@ func FindFriend(c *gin.Context) {
 		return
 	}
 
-	contact,err:=models.FindFrend(findFriend.UserId,findFriend.FriendId)
-	if err!=nil{
+	contact, err := models.FindFrend(findFriend.UserId, findFriend.FriendId)
+	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	response.OkWithDetailed(contact,"查找成功", c)
+	response.OkWithDetailed(contact, "查找成功", c)
 }
 
 // 用户创建群组
@@ -350,8 +351,54 @@ func AddGroup(c *gin.Context) {
 }
 
 // redis
-func RedisMsg(c *gin.Context){
+func RedisMsg(c *gin.Context) {
+	var redisPayload system.RedisPayload
+	err := c.ShouldBindJSON(&redisPayload)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
 
+	redismsg, err := models.HistoryMsg(redisPayload)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	data := gin.H{
+		"Rows": redismsg,
+	}
+	response.OkWithDetailed(data, "返回redis消息成功", c)
+}
+
+// 上传文件不需要绑定，文件存储在前端文件夹，不涉及数据库存储
+// 因此后端只需要管后端接收方式、存储文件名以及存储的文件夹然后返回即可
+// 暂时指定文件夹"./asset/upload/"
+func UploadInfo(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	// fmt.Println(file.Filename)
+
+	// 将文件名分开.隔开
+	filename_slice := strings.Split(file.Filename, ".")
+	suffix := filename_slice[len(filename_slice)-1]
+	perfix := fmt.Sprintf("%d%d", time.Now().Unix(), rand.Int31())
+
+	newFileName := perfix + "." + suffix
+
+	// 组装地址
+	dst := "././asset/upload/" + newFileName
+	// 上传文件至指定的完整文件路径
+	err = c.SaveUploadedFile(file, dst)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	response.OkWithDetailed(dst, "上传成功", c)
 }
 
 // websocket需要序列化反序列化数据，而不是绑定
@@ -403,6 +450,8 @@ func WsHandler(c *gin.Context) {
 
 	// }
 	// fmt.Println(">>>>>>>>>>>",authPayload.UserId)
+
+	fmt.Println(">>>>>>>>>>userid:", authPayload.UserId)
 
 	models.Myws(ws, authPayload.UserId)
 }

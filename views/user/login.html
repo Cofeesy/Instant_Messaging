@@ -58,6 +58,7 @@
                     if (res.code != 0) {
                         mui.toast(res.msg)
                     } else {
+                        // 这里是跳转前端页面，但是是搭建websocket吗
                         var url = "/toChat/index.shtml?id=" + res.data.id
                             + "&token=" + res.data.token
                         userInfo(res.data)

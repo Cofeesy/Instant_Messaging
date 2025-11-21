@@ -36,3 +36,6 @@ func ValidPassword(plainpwd, salt string, password string) bool {
 	fmt.Println(md + "				" + password)
 	return md == password
 }
+
+
+

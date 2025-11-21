@@ -2,30 +2,35 @@
 <script>
 
     function upload(dom) {
-        uploadfile("attach/upload", dom, function (res) {
-            if (res.Code == 0) {
-                app.sendpicmsg(res.Data)
+    // 使用 .then() 来接收回调
+        util.uploadfile("attach/upload", dom).then(function (res) {
+            if (res.code == 0) {
+                console.log(res.data)
+                app.sendpicmsg(res.data)
             }
         })
     }
+
     //上传图片 创建群
     function uploadthis(dom) {
-        uploadfile("attach/upload", dom, function (res) {
-            if (res.Code == 0) {
-                app.com.icon = res.Data;
-                console.log(res.Data);
+        util.uploadfile("attach/upload", dom).then(function (res) {
+            if (res.code == 0) {
+                app.com.icon = res.data;
+                console.log(res.data);
             }
         })
     }
+
     //维护用户头像
     function uploadUserInfo(dom) {
-        uploadfile("attach/upload", dom, function (res) {
-            if (res.Code == 0) {
-                app.info.icon = res.Data;
-                console.log(res.Data);
+        util.uploadfile("attach/upload", dom).then(function (res) {
+            if (res.code == 0) {
+                app.info.icon = res.data;
+                console.log(res.data);
             }
         })
     }
+
 
 
 
@@ -253,8 +258,8 @@
                             // console.log("post res[i]",id,res[id],pkginfo)
                             for (var j in pkginfo.assets) {
                                 pkginfo.assets[j] = baseurl + pkginfo.assets[j];
-                            }
-                            pkginfo.icon = baseurl + pkginfo.icon;
+                }
+                    pkginfo.icon = baseurl + pkginfo.icon;
                             that.doutu.packages.push(pkginfo)
                             if (that.doutu.choosed.pkgid == pkginfo.id) {
                                 that.doutu.choosed.assets = pkginfo.assets;
@@ -270,8 +275,10 @@
                     
                     var data = {
                     }
-                    data.ismine = userid() == msg.userid;
-                    //console.log(data.ismine,userid(),msg.userid)
+                    data.ismine = userid() == (msg.UserId || msg.userid)
+                    // console.log(userid())
+                    // console.log(msg.UserId)
+                    // console.log(data.ismine,userid(),msg.UserId)
                     data.user = user;
                     data.msg = msg;
                     console.log(this.msglist)
@@ -301,9 +308,9 @@
                         }
 
 
-
+                        
                         clearTimeout(that.timer)
-                    }, 100)
+                    }, 100) // 延时 100ms 等待 Vue 渲染完成
                 },
                 startrecord: function () {
 
@@ -329,7 +336,8 @@
                         //{id:1,userid:2,dstid:3,cmd:10,media:4,url:"http://www.baidu.com/a/log,jpg"}
                         var msg = this.createmsgcontext();
                         msg.Media = 4;
-                        msg.url = picurl;
+                        // console.log(picurl)
+                        msg.Url = picurl;
                         if (msg.Type == 1) {
                             this.showmsg(userInfo(), msg);
                         }
@@ -342,7 +350,7 @@
                         //{id:1,userid:2,dstid:3,cmd:10,media:3,url:"http://www.a,com/dsturl.mp3",anount:40}
                         var msg = this.createmsgcontext();
                         msg.Media = 3;
-                        msg.url = url;
+                        msg.Url = url;
                         msg.amount = num;
                         if (msg.Type == 1) {
                             this.showmsg(userInfo(), msg);
@@ -363,26 +371,29 @@
                     if (this.isDisable) {
                         //首次读取某个用户的消息记录
                         // if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
-                        //     utils.post("user/redisMsg", { useridA: userid(), useridB: user.ID, start: this.start, end: this.end, isRev: false }, function (res) {
+                        //     // idA是登陆的用户，idB是聊天的用户
+                        //     utils.post("user/redisMsg", { useridA: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false }, function (res) {
                         //         //循环读取的消息记录 并显示
-                        //         for (var i in res.Total) {
-                        //             this.showmsg(user, JSON.parse(res.Total[i]), false, true)
+                        //         for (var i in res.data.Rows) {
+                        //             this.showmsg(user, JSON.parse(res.data.Rows[i]), false, true)
                         //         }
                         //     }.bind(this))
                         //     this.isReadRedisMsg.push(user.ID)
                         // }
-                        // if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
-                        //     util.post("user/redisMsg", { userIdA: userid(), userIdB: user.ID, start: this.start, end: this.end, isRev: false })
-                        //         .then(function (res) { // 使用 .then()
-                        //             if (res.code === 0 && res.data) {
-                        //                 for (var i in res.data.Total) {
-                        //                     this.showmsg(user, JSON.parse(res.data.Total[i]), false, true);
-                        //                 }
-                        //             }
-                        //         }.bind(this)) // .bind(this) 在这里依然有效
-                        //         .catch(function(err){ mui.toast('加载历史消息失败'); });
-                        //     this.isReadRedisMsg.push(user.ID);
-                        // }
+                        //首次读取某个用户的消息记录
+                        if (this.isReadRedisMsg.filter(item => item === user.ID).length <= 0) {
+                            util.post("user/redisMsg", { userid: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false })
+                                .then(function (res) { // 使用 .then()
+                                    if (res.code === 0 && res.data) {
+                                        for (var i in res.data.Rows) {
+                                            console.log(res.data.Rows[i])
+                                            this.showmsg(user, res.data.Rows[i], false, true);
+                                        }
+                                    }
+                                }.bind(this)) // .bind(this) 在这里依然有效
+                                .catch(function(err){ mui.toast('加载历史消息失败'); });
+                            this.isReadRedisMsg.push(user.ID);
+                        }
 
                         this.setTimeFlag()
                         //console.log(user)
@@ -408,10 +419,10 @@
                                     this.isLoadMore = true;
                                     this.start = this.end + 1;
                                     this.end = this.end + 2;
-                                    utils.post("user/redisMsg", { useridA: userid(), useridB: user.ID, start: this.start, end: this.end, isRev: false }, function (res) {
+                                    utils.post("user/redisMsg", { userid: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false }).then(function (res) {
                                         //循环读取的消息记录 并显示
-                                        for (var i in res.Total) {
-                                            this.showmsg(user, JSON.parse(res.Total[i]), true)
+                                        for (var i in res.data.Rows) {
+                                            this.showmsg(user, res.data.Rows[i], true)
                                         }
                                         setTimeout(() => {
                                             this.isLoadMore = false;
@@ -425,6 +436,8 @@
                 },
                 //群聊的初始化
                 groupmsg: function (group) {
+                    console.log("进入 groupmsg,传入的 group 对象是:", group);
+                    console.log("即将设置的标题名称是:", group.groupname);
                     if (this.isDisable) {
                         this.setTimeFlag()
                         this.win = "group";
@@ -463,12 +476,20 @@
                     }
                 },
                 onmessage: function (data) {
-                    this.loaduserinfo(data.userid, function (user) {
+                    // 【新增】核心防重逻辑
+                    // 如果收到的消息发送者ID等于当前登录用户ID，说明是自己发的“回显”，
+                    // 因为我们在发送时已经通过 showmsg 显示过了，所以这里直接 return 忽略
+                    if (data.userid == userid()) {
+                        console.log("收到自己的回显消息，忽略渲染");
+                        return;
+                    }
 
+                    this.loaduserinfo(data.userid, function (user) {
+                        
                         this.showmsg(user, data)
                         this.friends.map((item) => {
                             if (item.ID == data.userid) {
-                                // 1文字 2表情包 3图片 4音频
+                                // 1文字 2表情包 3音频 4图片
                                 if (data.Media === 1) {
                                     item.memo = data.Content
                                 } else if (data.Media === 2) {
@@ -689,7 +710,7 @@
                 },
                 //新建群显示
                 createCom: function () {
-                    this.win = "community"
+                    this.win = "commiunity"
                     //  console.log("createCom")
                 },
 

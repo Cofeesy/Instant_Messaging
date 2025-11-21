@@ -141,6 +141,7 @@ Core.prototype.post=function(uri,data,fn){
 
     })
 }
+
 Core.prototype.uploadfile=function(uri,dom){
     var url = this.api(uri)
     return new Promise(function (resolve, reject) {

@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-var rdb *redis.Client
+var RDB *redis.Client
 
 func init() {
 	var (
@@ -28,7 +28,7 @@ func init() {
 		log.Fatalf("Fail to get section 'redis': %v", err)
 	}
 
-	rdb = redis.NewClient(&redis.Options{
+	RDB = redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password, // no password set
 		DB:       dbNumber,        // use default DB
