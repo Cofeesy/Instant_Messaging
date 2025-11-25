@@ -451,7 +451,7 @@ func WsHandler(c *gin.Context) {
 	// }
 	// fmt.Println(">>>>>>>>>>>",authPayload.UserId)
 
-	fmt.Println(">>>>>>>>>>userid:", authPayload.UserId)
+	// fmt.Println(">>>>>>>>>>userid:", authPayload.UserId)
 
 	models.Myws(ws, authPayload.UserId)
 }

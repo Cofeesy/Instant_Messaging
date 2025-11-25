@@ -154,7 +154,6 @@ func (client *Client) dispatchMsg(msg []byte) {
 	switch Msg.Type {
 	// 私聊
 	case 1:
-		// 这里的targetid是userid
 		SendMsgToUser(client.User_id, Msg.TargetId, msg)
 		return
 	// 群聊
@@ -190,18 +189,18 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 
 	mu.RLock()
 	send_client := UserToClient[formid]
-	recieve_client,ok:= UserToClient[targetId]
+	recieve_client, ok := UserToClient[targetId]
 	mu.RUnlock()
 
 	// TODO:将消息存储到redis上
 	// 选择有序表存储
 	ctx := context.Background()
-    key := ""
-    if formid < targetId {
-        key = fmt.Sprintf("msg_%d_to_%d", formid, targetId)
-    } else {
-        key = fmt.Sprintf("msg_%d_to_%d", targetId, formid)
-    }
+	key := ""
+	if formid < targetId {
+		key = fmt.Sprintf("msg_%d_to_%d", formid, targetId)
+	} else {
+		key = fmt.Sprintf("msg_%d_to_%d", targetId, formid)
+	}
 	// 使用redis的有序集合
 	score, err := utils.RDB.ZCard(ctx, key).Result()
 	if err != nil {
@@ -230,25 +229,25 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 
 	// TODO:回显,用于前端显示消息
 	if send_client != nil {
-        select {
-        case send_client.SendDataQueue <- msg:
-            // 发送成功
-        default:
-            // 发送者队列满了，一般这种情况很少见，除非断网卡死
-        }
-    }
+		select {
+		case send_client.SendDataQueue <- msg:
+			// 发送成功
+		default:
+			// 发送者队列满了，一般这种情况很少见，除非断网卡死
+		}
+	}
 
 	if ok && recieve_client != nil {
-        // 这里的 select 是为了防止写入阻塞导致协程泄露（可选，但推荐）
-        select {
-        case recieve_client.SendDataQueue <- msg:
-            fmt.Println("消息已实时推送给用户", targetId)
-        default:
-            fmt.Println("用户", targetId, "的发送队列已满，消息仅存储在Redis")
-        }
-    } else {
-        fmt.Println("用户", targetId, "不在线，消息已保存到Redis")
-    }
+		// 这里的 select 是为了防止写入阻塞导致协程泄露（可选，但推荐）
+		select {
+		case recieve_client.SendDataQueue <- msg:
+			fmt.Println("消息已实时推送给用户", targetId)
+		default:
+			fmt.Println("用户", targetId, "的发送队列已满，消息仅存储在Redis")
+		}
+	} else {
+		fmt.Println("用户", targetId, "不在线，消息已保存到Redis")
+	}
 
 }
 
@@ -342,6 +341,11 @@ func CleanConnection(param interface{}) (result bool) {
 
 // 用户心跳是否超时
 func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
+	// 每隔多少秒心跳时间 
+	// HeartbeatHz = 30
+	// 最大心跳时间,超过此就下线
+	// Time都是用的Unix(),那这个30000是秒
+	// HeartbeatMaxTime = 30000
 	if client.HeartbeatTime+uint64(setting.HeartbeatMaxTime) <= currentTime {
 		fmt.Println("心跳超时...自动下线", client)
 		timeout = true

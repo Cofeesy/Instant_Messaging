@@ -1,7 +1,7 @@
 package service
 
 import (
-	"fmt"
+	// "fmt"
 	"gin_chat/common/response"
 	"gin_chat/models"
 	"github.com/gin-gonic/gin"
@@ -65,7 +65,7 @@ func ToChat(c *gin.Context) {
 	user := models.User_Basic{}
 	user.ID = uint(userId)
 	user.LoginToken = token
-	fmt.Println("ToChat>>>>>>>>", user)
+	// fmt.Println("ToChat>>>>>>>>", user)
 	// 返回给前端的数据
 	t.Execute(c.Writer, user)
 }
