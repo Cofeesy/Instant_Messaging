@@ -5,7 +5,10 @@
                 <span class="mui-tab-label">好友</span>
             </a>
             <a class="mui-tab-item" href="#tabbar-group">
-                <span class="mui-icon mui-icon-chatboxes"><span class="mui-badge">9</span></span>
+                <span class="mui-icon mui-icon-chatboxes">
+                    <!-- 使用 Vue 绑定群组数量，默认不显示静态数字 -->
+                    <span class="mui-badge" v-if="groups && groups.length" v-text="groups.length"></span>
+                </span>
                 <span class="mui-tab-label">群聊</span>
             </a>
             <a class="mui-tab-item" href="#tabbar-profile">

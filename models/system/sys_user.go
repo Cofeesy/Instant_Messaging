@@ -95,10 +95,17 @@ type AuthMessage struct {
 	UserId uint   `json:"userid"`
 	Token  string `json:"token"`
 }
-type RedisPayload struct {
+type SingleRedisPayload struct {
 	UserId    uint  `json:"userid"`
 	TargetId  uint  `json:"targetid"`
 	Start     int64 `json:"start"`
 	End       int64 `json:"end"`
 	IsReverse bool  `json:"isreverse"`
+}
+
+
+type GroupRedisPayload struct {
+	GroupId uint  `json:"groupId"`
+	Start   int64 `json:"start"`
+	End     int64 `json:"end"`
 }

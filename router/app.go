@@ -4,8 +4,9 @@ import (
 	"gin_chat/service"
 	"gin_chat/utils/setting"
 
-	"github.com/gin-gonic/gin"
 	"gin_chat/docs"
+
+	"github.com/gin-gonic/gin"
 
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -38,7 +39,7 @@ func InitRouter() *gin.Engine {
 
 	// user
 	r.GET("/user/getUserList", service.GetUserList)
-	r.POST("user/findUser",service.Finduser)
+	r.POST("user/findUser", service.Finduser)
 	// r.POST("/user/createUser", service.CreateUser)
 	// r.PUT("/user/updateUserPasswd", service.UpdateUserPasswd)
 	r.POST("/user/updateUserInfo", service.UpdateUserInfo)
@@ -46,21 +47,23 @@ func InitRouter() *gin.Engine {
 	r.DELETE("/user/deleteUser", service.DeleteUser)
 
 	// contact
-	r.GET("/findFriend",service.FindFriend)
-	r.POST("/findFriends",service.LoadFriends)
-	r.POST("/addFriend",service.AddFriend)
+	r.GET("/findFriend", service.FindFriend)
+	r.POST("/findFriends", service.LoadFriends)
+	r.POST("/addFriend", service.AddFriend)
 
 	// group
 	// r.GET("/findGroup",service.FindGroup)
-	r.POST("/group/joinGroup",service.AddGroup)
-	r.POST("/group/loadGroups",service.LoadGroups)
-	r.POST("/group/createGroup",service.CreateGroup)
+	r.POST("/group/joinGroup", service.AddGroup)
+	r.POST("/group/loadGroups", service.LoadGroups)
+	r.POST("/group/createGroup", service.CreateGroup)
 	// 以上都已经Api测试过,ok
 
-	r.POST("/user/redisMsg",service.RedisMsg)
+	r.POST("/user/getSingleMessagesFromRedis", service.GetSingleMessagesFromRedis)
 
-	r.POST("/attach/upload",service.UploadInfo)
-	
+	r.POST("/attach/upload", service.UploadInfo)
+
+	// 【新增】群聊消息接口
+	r.POST("/message/getGroupMessagesFromRedis", service.GetGroupMessagesFromRedis)
 
 	return r
 }

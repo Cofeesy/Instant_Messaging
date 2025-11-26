@@ -29,17 +29,17 @@ import (
 
 type Message struct {
 	gorm.Model
-	UserId     uint   //发送者
-	TargetId   uint   //接受者
-	Type       int    //发送类型  1私聊  2群聊  3心跳
-	Media      int    //消息类型  1文字 2表情包 3图片 4音频
-	Content    string //消息内容
-	CreateTime uint64 //创建时间
-	ReadTime   uint64 //读取时间
-	Pic        string
-	Url        string
-	Desc       string
-	Amount     int //其他数字统计
+	UserId     uint   `json:"userid"`
+	TargetId   uint   `json:"targetid"`
+	Type       int    `json:"type"`
+	Media      int    `json:"media"`
+	Content    string `json:"content"`
+	CreateTime uint64 `json:"createTime"`
+	ReadTime   uint64 `json:"readTime"`
+	Pic        string `json:"pic"`
+	Url        string `json:"url"`
+	Desc       string `json:"desc"`
+	Amount     int    `json:"amount"`
 }
 
 func (message *Message) TableName() string {
@@ -147,13 +147,23 @@ func (client *Client) Recieve() {
 func (client *Client) dispatchMsg(msg []byte) {
 	var Msg Message
 	json.Unmarshal(msg, &Msg)
-	// if err != nil {
-	// 	fmt.Println("read2:", err.Error())
-	// }
+
+	// 确保消息的发送者ID等于当前连接的客户端ID
+	// 防止消息中的userid不匹配
+	Msg.UserId = client.User_id
+	msg, err := json.Marshal(Msg)
+	if err != nil {
+		fmt.Println("【ERROR】消息序列化失败:", err)
+		return
+	}
+
+	// fmt.Println("【DEBUG】dispatchMsg: 收到消息，Type=", Msg.Type, ", 发送者ID=", Msg.UserId, ", 目标ID=", Msg.TargetId)
+
 	// TODO:target设置-1的时候会报错，但不影响通信
 	switch Msg.Type {
 	// 私聊
 	case 1:
+		// fmt.Println("【DEBUG】处理私聊消息，从", client.User_id, "到", Msg.TargetId)
 		SendMsgToUser(client.User_id, Msg.TargetId, msg)
 		return
 	// 群聊
@@ -167,10 +177,24 @@ func (client *Client) dispatchMsg(msg []byte) {
 		for _, v := range contacts {
 			IDs = append(IDs, v.OwnerId)
 		}
-		// // 除去发送用户
-		// fmt.Println(">>>>>>>>>>>2:",IDs)
-		remove_ids := client.RemoveId(IDs)
-		SendMsgToGroup(remove_ids, msg)
+		// 不移除发送用户，发送给所有群成员（包括发送者自己）
+		// 前端根据 userid 判断是否是自己发的消息，自己发的消息不再渲染
+		// remove_ids := client.RemoveId(IDs)
+
+		// 如果发送者不在 IDs 中（群成员列表），需要添加发送者
+		// 这样确保发送者也能收到自己的消息（用于群聊消息历史同步）
+		hasSender := false
+		for _, id := range IDs {
+			if id == client.User_id {
+				hasSender = true
+				break
+			}
+		}
+		if !hasSender {
+			IDs = append(IDs, client.User_id)
+		}
+
+		SendMsgToGroup(IDs, msg, Msg.TargetId)
 		return
 	// 心跳
 	case 3:
@@ -188,20 +212,24 @@ func (client *Client) dispatchMsg(msg []byte) {
 func SendMsgToUser(formid, targetId uint, msg []byte) {
 
 	mu.RLock()
-	send_client := UserToClient[formid]
+	// send_client := UserToClient[formid]
 	recieve_client, ok := UserToClient[targetId]
 	mu.RUnlock()
 
 	// TODO:将消息存储到redis上
 	// 选择有序表存储
 	ctx := context.Background()
+
+	// 私聊消息的 Redis key 格式：包含 type 标识
+	// 私聊: chat:private:{小ID}:{大ID}
 	key := ""
 	if formid < targetId {
-		key = fmt.Sprintf("msg_%d_to_%d", formid, targetId)
+		key = fmt.Sprintf("chat:private:%d:%d", formid, targetId)
 	} else {
-		key = fmt.Sprintf("msg_%d_to_%d", targetId, formid)
+		key = fmt.Sprintf("chat:private:%d:%d", targetId, formid)
 	}
 	// 使用redis的有序集合
+	// zcard获取有序集合的成员数
 	score, err := utils.RDB.ZCard(ctx, key).Result()
 	if err != nil {
 		fmt.Println(">>>>>>>>>err:", err)
@@ -228,40 +256,65 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 	// }
 
 	// TODO:回显,用于前端显示消息
-	if send_client != nil {
-		select {
-		case send_client.SendDataQueue <- msg:
-			// 发送成功
-		default:
-			// 发送者队列满了，一般这种情况很少见，除非断网卡死
-		}
-	}
+	// fmt.Println("【DEBUG】SendMsgToUser: 发送者ID=", formid, ", 接收者ID=", targetId)
+	// fmt.Println("【DEBUG】send_client状态=", send_client != nil, ", recieve_client状态=", recieve_client != nil, ", ok=", ok)
+
+	// 不再回显消息给发送者
+	// 因为前端在 sendtxtmsg 时已经立即调用 showmsg 显示了自己的消息
+	// 回显只会造成混淆，导致接收方错误地认为这是自己发的消息
 
 	if ok && recieve_client != nil {
 		// 这里的 select 是为了防止写入阻塞导致协程泄露（可选，但推荐）
 		select {
 		case recieve_client.SendDataQueue <- msg:
-			fmt.Println("消息已实时推送给用户", targetId)
+			fmt.Println("【INFO】消息已实时推送给用户", targetId)
 		default:
-			fmt.Println("用户", targetId, "的发送队列已满，消息仅存储在Redis")
+			fmt.Println("【WARNING】用户", targetId, "的发送队列已满，消息仅存储在Redis")
 		}
 	} else {
-		fmt.Println("用户", targetId, "不在线，消息已保存到Redis")
+		fmt.Println("【WARNING】用户", targetId, "不在线或连接异常，消息已保存到Redis")
 	}
 
 }
 
 // 群聊
-func SendMsgToGroup(ids []uint, msg []byte) {
+func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 	if len(ids) == 0 {
 		return
 	}
-	// fmt.Println(">>>>>>>>>>>2:",ids)
+
+	// 保存群聊消息到 Redis，key 格式清晰标注为群聊
+	// 群聊: chat:group:{groupId}
+	ctx := context.Background()
+	key := fmt.Sprintf("chat:group:%d", groupId)
+
+	score, err := utils.RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		fmt.Println("获取群聊消息数量失败:", err)
+	}
+
+	// 使用 Redis 有序集合存储群聊消息
+	if score == 0 {
+		utils.RDB.ZAdd(ctx, key, redis.Z{Score: 0, Member: msg})
+	} else {
+		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
+	}
+
+	// 【新增】设置消息过期时间（7天）
+	// utils.RDB.Expire(ctx, key, 7*24*time.Hour)
+
 	for _, v := range ids {
 		mu.RLock()
 		client := UserToClient[v]
 		mu.RUnlock()
-		client.SendDataQueue <- msg
+		if client != nil {
+			select {
+			case client.SendDataQueue <- msg:
+				fmt.Println("消息已发送给用户:", v)
+			default:
+				fmt.Println("用户", v, "的发送队列已满，消息仅存储在Redis")
+			}
+		}
 	}
 }
 
@@ -271,22 +324,57 @@ func SendMsgToGroup(ids []uint, msg []byte) {
 // }
 
 // 读取start-end的redis数据，并返回给前端
-// 返回的是消息列表吗？
-func HistoryMsg(redisPayload system.RedisPayload) ([]*Message, error) {
+func GetSingleHistoryMsg(redisPayload system.SingleRedisPayload) ([]*Message, error) {
 	// 从redis里面查找
 
 	ctx := context.Background()
 
-	// 组装key
+	// 【修改】组装私聊消息的 key
 	key := " "
 	if redisPayload.UserId < redisPayload.TargetId {
-		key = fmt.Sprintf("msg_%d_to_%d", redisPayload.UserId, redisPayload.TargetId)
+		key = fmt.Sprintf("chat:private:%d:%d", redisPayload.UserId, redisPayload.TargetId)
 	} else {
-		key = fmt.Sprintf("msg_%d_to_%d", redisPayload.TargetId, redisPayload.UserId)
+		key = fmt.Sprintf("chat:private:%d:%d", redisPayload.TargetId, redisPayload.UserId)
 	}
-	// 通过zreverange返回有序集中指定区间内的成员，通过索引，分数从高到低
-	// msgs是string类型的
-	stringmsgs, err := utils.RDB.ZRevRange(ctx, key, redisPayload.Start, redisPayload.End).Result()
+	// 前端传来的 Start/End 是相对于最新消息的偏移（Start=0, End=9 表示最近 10 条）
+	// 需要把它们转换为 Redis 有序集合的正序索引：
+	// 假设总数为 total，则想要的区间为 [total-1-End, total-1-Start]
+	// 如果 End == -1，则返回全部（ZRange 0 -1）
+	var stringmsgs []string
+	// 先获取当前总数
+	total, err := utils.RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if redisPayload.End == -1 {
+		// 返回所有消息（正序）
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// 计算正序的 start/end
+		// total 是 int64
+		if total == 0 {
+			return []*Message{}, nil
+		}
+		// 计算索引
+		// 注意 redisPayload.Start/End 是 int64
+		s := int64(total) - 1 - redisPayload.End
+		e := int64(total) - 1 - redisPayload.Start
+		if s < 0 {
+			s = 0
+		}
+		if e < 0 {
+			// 没有可返回的消息
+			return []*Message{}, nil
+		}
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -304,13 +392,33 @@ func HistoryMsg(redisPayload system.RedisPayload) ([]*Message, error) {
 	return msgs, nil
 }
 
-func (client *Client) RemoveId(a []uint) []uint {
-	for i, v := range a {
-		if v == client.User_id {
-			return append(a[:i], a[i+1:]...)
-		}
+// 【新增】从 Redis 读取群聊消息历史
+func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*Message, error) {
+	ctx := context.Background()
+
+	// 【修改】群组消息的 Redis key，使用统一的命名规范
+	key := fmt.Sprintf("chat:group:%d", groupRedis.GroupId)
+
+	// 从 Redis 有序集合中读取消息
+	// ZRange 是从低分数到高分数（正序）
+	stringmsgs, err := utils.RDB.ZRange(ctx, key, groupRedis.Start, groupRedis.End).Result()
+	if err != nil && err != redis.Nil {
+		fmt.Println("从Redis读取群聊消息失败:", err)
+		return nil, err
 	}
-	return a
+
+	msgs := make([]*Message, 0)
+	for _, v := range stringmsgs {
+		var msg Message
+		err := json.Unmarshal([]byte(v), &msg)
+		if err != nil {
+			fmt.Println("解析消息失败:", err)
+			continue
+		}
+		msgs = append(msgs, &msg)
+	}
+
+	return msgs, nil
 }
 
 // 更新用户心跳
@@ -341,7 +449,7 @@ func CleanConnection(param interface{}) (result bool) {
 
 // 用户心跳是否超时
 func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
-	// 每隔多少秒心跳时间 
+	// 每隔多少秒心跳时间
 	// HeartbeatHz = 30
 	// 最大心跳时间,超过此就下线
 	// Time都是用的Unix(),那这个30000是秒

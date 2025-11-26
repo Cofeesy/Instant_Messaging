@@ -112,19 +112,19 @@ func Login(c *gin.Context) {
 // @Router /user/updateUser [put]
 func UpdateUserInfo(c *gin.Context) {
 	var updateuserinfo system.UpdateUserInfo
-	if err := c.ShouldBindJSON(&updateuserinfo ); err != nil {
+	if err := c.ShouldBindJSON(&updateuserinfo); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
 	validate := validator.New()
-	if err := validate.Var(updateuserinfo .Username, "omitempty,min=2,max=100"); err != nil {
+	if err := validate.Var(updateuserinfo.Username, "omitempty,min=2,max=100"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	} else if err := validate.Var(updateuserinfo .Phone, "omitempty"); err != nil {
+	} else if err := validate.Var(updateuserinfo.Phone, "omitempty"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	} else if err := validate.Var(updateuserinfo .Email, "omitempty,email"); err != nil {
+	} else if err := validate.Var(updateuserinfo.Email, "omitempty,email"); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
@@ -351,15 +351,15 @@ func AddGroup(c *gin.Context) {
 }
 
 // redis
-func RedisMsg(c *gin.Context) {
-	var redisPayload system.RedisPayload
+func GetSingleMessagesFromRedis(c *gin.Context) {
+	var redisPayload system.SingleRedisPayload
 	err := c.ShouldBindJSON(&redisPayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
 
-	redismsg, err := models.HistoryMsg(redisPayload)
+	redismsg, err := models.GetSingleHistoryMsg(redisPayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -454,4 +454,33 @@ func WsHandler(c *gin.Context) {
 	// fmt.Println(">>>>>>>>>>userid:", authPayload.UserId)
 
 	models.Myws(ws, authPayload.UserId)
+}
+
+// GetGroupMessagesFromRedis
+// @Summary 从Redis获取群组消息历史
+// @Tag 消息
+// @Param groupId query int true "群组ID"
+// @Success 200 {string} json{"code","data"}
+// @Router /message/getGroupMessagesFromRedis [post]
+func GetGroupMessagesFromRedis(c *gin.Context) {
+	var groupRedis system.GroupRedisPayload
+
+	if err := c.ShouldBindJSON(&groupRedis); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	// 如果没有提供分页参数，默认读取所有消息
+	if groupRedis.End == 0 {
+		groupRedis.End = -1
+	}
+
+	// 从 Redis 中读取群聊消息
+	messages, err := models.GetGroupHistoryMessages(&groupRedis)
+	if err != nil {
+		response.FailWithMessage("读取消息失败: "+err.Error(), c)
+		return
+	}
+
+	response.OkWithData(messages, c)
 }
