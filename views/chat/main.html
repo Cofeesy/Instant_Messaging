@@ -44,6 +44,7 @@
         </div>
 
     </div>
+    <!-- debug button removed -->
     <div class="flex-container main-content">
         <div class="item-1" @tap="txtstat='audio'" v-if="txtstat=='kbord'">
             <i class="iconfont icon-yuyin"></i>
@@ -60,31 +61,31 @@
 
             </input>
         </div>
-        <div class="item-3" @tap="() => {panelstat==='doutu'? panelstat='kbord' : panelstat='doutu'}">
+        <div class="item-3" @tap="panelstat = panelstat === 'doutu' ? 'kbord' : 'doutu'" @click.stop>
             <i class="iconfont icon-7biaoqing-1"></i>
         </div>
-        <div class="item-4" v-if="!txtmsg" @tap="() => {panelstat==='more'? panelstat='kbord' : panelstat='more'}">
+        <div class="item-4" v-if="!txtmsg" @tap="panelstat = panelstat === 'more' ? 'kbord' : 'more'" @click.stop>
             <i class="iconfont icon-jiahao"></i>
         </div>
         <div class="item-4" v-if="!!txtmsg" @tap="sendtxtmsg(txtmsg)">
             <i class="iconfont icon-fasong"></i>
         </div>
     </div>
-    <div id="panels" style="display: flex">
-        <div v-if="panelstat=='doutu'">
-            <div class="doutures">
-                <div @tap="sendpicmsg(item)" class="res" v-for="item in doutu.choosed.assets">
+    <div id="panels" style="display: flex; position: fixed; left: 0; right: 0; bottom: 56px; z-index: 9999; pointer-events: auto; background: #fff;" @click.stop>
+        <div v-show="panelstat=='doutu'">
+                <div class="doutures" @click.stop>
+                <div @tap="sendpicmsg(item)" @click="sendpicmsg(item)" class="res" v-for="item in doutu.choosed.assets" style="pointer-events: auto; cursor: pointer;">
                     <img :class="doutu.choosed.size ||'small'" :src="item" />
                 </div>
             </div>
-            <div class="doutupkg">
-                <div class="pkg" @tap="doutu.choosed=item" v-for="item in doutu.packages">
+                <div class="doutupkg" @click.stop>
+                <div class="pkg" @tap="doutu.choosed=item" @click="doutu.choosed=item" v-for="item in doutu.packages">
                     <img :class="item.size || 'small'" :src="item.icon" />
                 </div>
             </div>
         </div>
 
-        <div v-if="panelstat=='more'" class="plugins">
+        <div v-show="panelstat=='more'" class="plugins">
             <div class="plugin" @tap="dispatchplugin(item)" v-for="item in plugins">
                 <i class="iconfont" :class="item.icon"></i>
                 <div v-html="item.slot"></div>

@@ -266,25 +266,32 @@
                     pkginfo.icon = baseurl + pkginfo.icon;
                             that.doutu.packages.push(pkginfo)
                             if (that.doutu.choosed.pkgid == pkginfo.id) {
-                                that.doutu.choosed.assets = pkginfo.assets;
+                                // 使用 $set 保证响应式更新，避免直接替换数组导致模板不更新
+                                try {
+                                    that.$set(that.doutu.choosed, 'assets', pkginfo.assets);
+                                } catch (e) {
+                                    // 兼容没有 $set 的情形（极少见）
+                                    that.doutu.choosed.assets = pkginfo.assets;
+                                }
                             }
 
                         })
                     }
+                    // 事件代理移除：已切回使用 Vue 的 @click/@tap 处理表情点击，移除全局代理以减少副作用
                 },
                 showweixin: function () {
                     mui.alert("请加微信号msb-shenzhuan索取")
                 },
                 showmsg: function (user, msg, isReverse, isFirst) {
-                    console.log("【showmsg】开始显示消息，user=", user, "msg=", msg);
-                    console.log("【showmsg】当前win状态=", this.win, "msgcontext.targetid=", this.msgcontext.targetid);
+                    // console.log("【showmsg】开始显示消息，user=", user, "msg=", msg);
+                    // console.log("【showmsg】当前win状态=", this.win, "msgcontext.targetid=", this.msgcontext.targetid);
                     
                     var data = {
                     }
                     data.ismine = userid() == (msg.userid)
                     data.user = user;
                     data.msg = msg;
-                    console.log("【showmsg】消息信息：ismine=", data.ismine, "msglist长度=", this.msglist.length);
+                    // console.log("【showmsg】消息信息：ismine=", data.ismine, "msglist长度=", this.msglist.length);
                     
                     if (isReverse) {
                         this.msglist = [data].concat(this.msglist);
@@ -298,11 +305,11 @@
                         }
                     }
                     
-                    console.log("【showmsg】消息已添加到msglist，新长度=", this.msglist.length);
+                    // console.log("【showmsg】消息已添加到msglist，新长度=", this.msglist.length);
                     this.reset();
                     var that = this;
                     that.timer = setTimeout(function () {
-                        console.log("【showmsg】延时回调执行，准备滚动");
+                        // console.log("【showmsg】延时回调执行，准备滚动");
                         window.scrollTo(0, document.getElementById("convo").offsetHeight);
                         if (!isReverse) {
                             let scroll = document.querySelector("#convo .mui-scroll-wrapper").offsetHeight;
@@ -310,7 +317,7 @@
                             let y = scroll - inner - 80;
                             let transform = document.querySelector("#convo .mui-scroll").style.transform;
                             document.querySelector("#convo .mui-scroll").style.transform = 'translateY(' + y + 'px)';
-                            console.log("【showmsg】滚动到底部，y=", y);
+                            // console.log("【showmsg】滚动到底部，y=", y);
                         } else {
                             document.querySelector("#convo .mui-scroll").style.transform = 'translateY(' + 0 + 'px)';
                         }
@@ -340,12 +347,21 @@
                         this.setTimeFlag()
                         //{id:1,userid:2,dstid:3,cmd:10,media:4,url:"http://www.baidu.com/a/log,jpg"}
                         var msg = this.createmsgcontext();
+                        // 如果是表情包资源（来自 doutu），也按图片发送（media=4）
                         msg.media = 4;
-                        // console.log(picurl)
                         msg.url = picurl;
+                        // 临时日志，便于定位表情包发送问题
+                        console.log("[sendpicmsg] 发送图片/表情包消息 payload:", msg);
                         // 【修复】所有消息都立即显示（私聊和群聊）
                         this.showmsg(userInfo(), msg);
-                        this.webSocket.send(JSON.stringify(msg))
+                        // 发送前再次序列化并打印（帮助后端定位）
+                        try {
+                            var payload = JSON.stringify(msg);
+                            console.log("[sendpicmsg] websocket send string:", payload);
+                            this.webSocket.send(payload);
+                        } catch (e) {
+                            console.error('[sendpicmsg] 序列化或发送失败', e);
+                        }
                     }
                 },
                 sendaudiomsg: function (url, num) {
@@ -379,7 +395,7 @@
                         util.post("user/getSingleMessagesFromRedis", { userid: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false })
                             .then(function (res) { // 使用 .then()
                                 if (res.code === 0 && res.data && res.data.Rows) {
-                                    console.log("【singlemsg】加载私聊历史消息:", res.data.Rows);
+                                    // console.log("【singlemsg】加载私聊历史消息:", res.data.Rows);
                                     for (var i in res.data.Rows) {
                                         this.showmsg(user, res.data.Rows[i], false, false);
                                     }
@@ -505,7 +521,7 @@
                         // 【关键】忽略自己发送的消息（前端在 sendtxtmsg 时已经立即显示了）
                         // 只有在用户处于群聊界面且当前群组ID匹配时，并且消息不是自己发的，才显示
                         if (userid() === data.userid) {
-                            console.log("【群聊】忽略自己发送的消息，消息已在前端 sendtxtmsg 时显示过");
+                            // console.log("【群聊】忽略自己发送的消息，消息已在前端 sendtxtmsg 时显示过");
                             return;
                         }
                         
@@ -957,6 +973,9 @@
             }
         }
     )
+
+    // 为了调试与外部脚本访问，暴露全局 Vue 实例
+    try { window.app = app; } catch (e) { console.warn('expose app failed', e); }
 
 </script>
 {{end}}
