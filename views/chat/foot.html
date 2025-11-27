@@ -172,8 +172,27 @@
                     this.profile.nickname = userInfo.username;
                 },
                 playaudio: function (url) {
-                    document.getElementById('audio4play').src = url;
-                    document.getElementById('audio4play').play();
+                    var audioEl = document.getElementById('audio4play');
+                    if (!url) {
+                        console.warn('[playaudio] empty or undefined url:', url);
+                        try { audioEl.pause(); audioEl.removeAttribute('src'); } catch (e) {}
+                        return;
+                    }
+                    // 如果传入的是相对路径并且不以 '/' 开头，保持原样；否则直接使用
+                    try {
+                        audioEl.pause();
+                        audioEl.src = url;
+                        // 强制重新加载资源，避免旧的加载阻塞新的播放请求
+                        audioEl.load();
+                        var playPromise = audioEl.play();
+                        if (playPromise && typeof playPromise.then === 'function') {
+                            playPromise.catch(function (err) {
+                                console.error('[playaudio] play() failed:', err);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('[playaudio] error while trying to play audio:', e);
+                    }
                 },
                 startrecorder: function () {
                     let audioTarget = document.getElementById('audio');
@@ -365,6 +384,11 @@
                     }
                 },
                 sendaudiomsg: function (url, num) {
+                    if (!url) {
+                        console.warn('[sendaudiomsg] empty url, abort sending audio message:', url);
+                        return;
+                    }
+
                     if (this.isDisable) {
                         this.setTimeFlag()
                         //{id:1,userid:2,dstid:3,cmd:10,media:3,url:"http://www.a,com/dsturl.mp3",anount:40}

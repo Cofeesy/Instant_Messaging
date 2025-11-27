@@ -57,13 +57,16 @@ func InitRouter() *gin.Engine {
 	r.POST("/group/loadGroups", service.LoadGroups)
 	r.POST("/group/createGroup", service.CreateGroup)
 	// 以上都已经Api测试过,ok
-
-	r.POST("/user/getSingleMessagesFromRedis", service.GetSingleMessagesFromRedis)
-
 	r.POST("/attach/upload", service.UploadInfo)
 
-	// 【新增】群聊消息接口
+	// redis历史消息
+	r.POST("/user/getSingleMessagesFromRedis", service.GetSingleMessagesFromRedis)
 	r.POST("/message/getGroupMessagesFromRedis", service.GetGroupMessagesFromRedis)
+
+
+	// 
+	// r.GET("/chatWithAI", service.WsHandler)
+
 
 	return r
 }
