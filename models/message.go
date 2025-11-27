@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	// "gin_chat/models"
 	"gin_chat/models/system"
 	"gin_chat/utils"
 	"gin_chat/utils/setting"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/genai"
 	"gorm.io/gorm"
 )
 
@@ -31,8 +33,8 @@ type Message struct {
 	gorm.Model
 	UserId     uint   `json:"userid"`
 	TargetId   uint   `json:"targetid"`
-	Type       int    `json:"type"` // 1私聊 2群聊 3心跳
-	Media      int    `json:"media"`	// 1文字 2暂时没用 3语音 4图片，表情包
+	Type       int    `json:"type"`  // 1私聊 2群聊 3心跳 4gemini聊天
+	Media      int    `json:"media"` // 1文字 2暂时没用 3语音 4图片，表情包
 	Content    string `json:"content"`
 	CreateTime uint64 `json:"createTime"`
 	ReadTime   uint64 `json:"readTime"`
@@ -200,6 +202,11 @@ func (client *Client) dispatchMsg(msg []byte) {
 	case 3:
 		client.HeartbeatTime = uint64(time.Now().Unix())
 		return
+
+	// gemini聊天
+	case 4:
+		ChatWithGemini(msg)
+		return
 	}
 }
 
@@ -243,25 +250,6 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
 	}
 
-	// FIXME:这里出问题？
-	// 目前来看，等登陆上才会有client，未登陆上就是空指针
-	// 但是事实情况是，服务器一直开着，用户注册并登录过后台就会有记录，因此只需要加上一个判断即可
-	// mu.RLock()
-	// recieve_client,ok:= UserToClient[targetId]
-	// mu.RUnlock()
-
-	// if send_client == nil {
-	// 	log.Printf("SendMsgToUser: user %d not connected or not exists, message dropped", targetId)
-	// 	return
-	// }
-
-	// TODO:回显,用于前端显示消息
-	// fmt.Println("【DEBUG】SendMsgToUser: 发送者ID=", formid, ", 接收者ID=", targetId)
-	// fmt.Println("【DEBUG】send_client状态=", send_client != nil, ", recieve_client状态=", recieve_client != nil, ", ok=", ok)
-
-	// 不再回显消息给发送者
-	// 因为前端在 sendtxtmsg 时已经立即调用 showmsg 显示了自己的消息
-	// 回显只会造成混淆，导致接收方错误地认为这是自己发的消息
 
 	if ok && recieve_client != nil {
 		// 这里的 select 是为了防止写入阻塞导致协程泄露（可选，但推荐）
@@ -355,12 +343,10 @@ func GetSingleHistoryMsg(redisPayload system.SingleRedisPayload) ([]*Message, er
 		}
 	} else {
 		// 计算正序的 start/end
-		// total 是 int64
 		if total == 0 {
 			return []*Message{}, nil
 		}
 		// 计算索引
-		// 注意 redisPayload.Start/End 是 int64
 		s := int64(total) - 1 - redisPayload.End
 		e := int64(total) - 1 - redisPayload.Start
 		if s < 0 {
@@ -459,4 +445,48 @@ func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
 		timeout = true
 	}
 	return
+}
+
+// TODO:和gemini聊天后端实现
+// 目前仅支持text
+// 前端 ——WebSocket—— 后端（Go+Gin+WebSocket） —— 调 AI API（流式） —— 前端展示
+func ChatWithGemini(msg []byte) {
+	// 客户端创建
+	ctx := context.Background()
+	cc := genai.ClientConfig{
+		APIKey: "AIzaSyCcb4xiwuUgfu56Ie8y8T9oV5Y6-VIIf50",
+	}
+	aiClient, err := genai.NewClient(ctx, &cc)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var Msg Message
+	json.Unmarshal(msg, &Msg)
+	stream := aiClient.Models.GenerateContentStream(
+		ctx,
+		"gemini-2.5-flash",
+		genai.Text(Msg.Content),
+		nil,
+	)
+
+	client:=UserToClient[Msg.UserId]
+
+	// 将流消息发送给自己
+	for chunk, err := range stream {
+		if err==nil{
+			part := chunk.Candidates[0].Content.Parts[0]
+			fmt.Print(part.Text)
+			// 发送给谁呢,发送给自己吧，由前端设置显示
+			Text,err:=json.Marshal(part.Text)
+			if err==nil{
+				client.SendDataQueue <- Text
+			}else{
+				fmt.Println(err)
+			}
+		}else{
+			fmt.Println(err)
+		}
+		
+	}
 }
