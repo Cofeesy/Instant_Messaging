@@ -307,9 +307,15 @@
                     // console.log("【showmsg】开始显示消息，user=", user, "msg=", msg);
                     // console.log("【showmsg】当前win状态=", this.win, "msgcontext.targetid=", this.msgcontext.targetid);
                     
-                    var data = {
+                    var data = {};
+    
+                    // 【关键修改】如果消息 ID 是 0，绝对显示在左边
+                    if (msg.userid === 0) {
+                        data.ismine = false;
+                    } else {
+                        data.ismine = userid() == (msg.userid);
                     }
-                    data.ismine = userid() == (msg.userid)
+                    
                     data.user = user;
                     data.msg = msg;
                     // console.log("【showmsg】消息信息：ismine=", data.ismine, "msglist长度=", this.msglist.length);
@@ -411,115 +417,281 @@
                     this.panelstat = 'kbord';
                 },
                 singlemsg: function (user) {
-                    this.start = 0;
-                    this.end = 9;
-                    if (this.isDisable) {
-                        // 【改进】每次进入都清空消息列表，然后重新加载历史消息
-                        this.msglist = [];
-                        
-                        // 加载该用户的历史消息
-                        util.post("user/getSingleMessagesFromRedis", { userid: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false })
-                            .then(function (res) { // 使用 .then()
-                                if (res.code === 0 && res.data && res.data.Rows) {
-                                    // console.log("【singlemsg】加载私聊历史消息:", res.data.Rows);
-                                    for (var i in res.data.Rows) {
-                                        this.showmsg(user, res.data.Rows[i], false, false);
-                                    }
-                                } else {
-                                    console.log("【singlemsg】没有历史消息");
-                                }
-                            }.bind(this)) // .bind(this) 在这里依然有效
-                            .catch(function(err){ 
-                                console.error('【singlemsg】加载历史消息失败:', err);
-                                mui.toast('加载历史消息失败'); 
-                            });
+                var that = this;
+                this.start = 0;
+                this.end = 9;
+                this.isLoadMore = false;
 
-                        this.setTimeFlag()
-                        this.win = "single";
-                        this.title = "和" + user.username + "聊天中";
-                        this.otherAvatar = user.Avatar;
-                        this.msgcontext.targetid = parseInt(user.ID);
-                        this.msgcontext.type = 1;
-                        mui('.mui-scroll-wrapper').scroll({
-                            scrollY: true, //是否竖向滚动
-                            scrollX: false, //是否横向滚动
-                            startX: 0, //初始化时滚动至x
-                            startY: 0, //初始化时滚动至y
-                            indicators: true, //是否显示滚动条
-                            deceleration: 0.0006, //阻尼系数,系数越小滑动越灵敏
-                            bounce: true //是否启用回弹
+                if (this.isDisable) {
+                    this.msglist = []; // 清空当前消息列表
+                    
+                    // 设置当前聊天上下文
+                    this.win = "single";
+                    this.title = "和 " + user.username + " 聊天中";
+                    this.otherAvatar = user.Avatar;
+                    this.msgcontext.targetid = parseInt(user.ID);
+                    this.msgcontext.type = 1;
+
+                    // 定义通用的渲染逻辑
+                    var processAndShow = function(rows, isReverse) {
+                        rows.forEach(function(item) {
+                            // 如果是字符串先解析
+                            if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) {} }
+                            that.showmsg(user, item, isReverse, false);
                         });
-                        //下拉获取历史消息记录
-                        document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', (e) => {
+                    };
+
+                    // 首次加载
+                    util.post("user/getSingleMessagesFromRedis", { 
+                        userid: userid(), 
+                        targetid: user.ID, 
+                        start: this.start, 
+                        end: this.end, 
+                        isreverse: false 
+                    }).then(function (res) {
+                        if (res.code === 0 && res.data && res.data.Rows) {
+                            processAndShow(res.data.Rows, false);
+                        } else {
+                            console.log("【singlemsg】无历史消息或数据格式为空");
+                        }
+                    }).catch(function(err){ 
+                        console.error('加载历史消息失败:', err);
+                    });
+
+                    this.setTimeFlag();
+
+                    // 初始化滚动与监听
+                    setTimeout(function() {
+                        mui('.mui-scroll-wrapper').scroll({
+                            scrollY: true, scrollX: false, startX: 0, startY: 0,
+                            indicators: true, deceleration: 0.0006, bounce: true
+                        });
+                        
+                        // 监听上拉加载更多
+                        document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
                             let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
                             if (translate && translate.length > 1) {
-                                if (translate[1] > 0 && this.isLoadMore == false) {
-                                    this.isLoadMore = true;
-                                    this.start = this.end + 1;
-                                    this.end = this.end + 2;
-                                    util.post("user/", { userid: userid(), targetid: user.ID, start: this.start, end: this.end, isreverse: false })
-                                        .then(function (res) {
-                                            if (res.code === 0 && res.data && res.data.Rows) {
-                                                for (var i in res.data.Rows) {
-                                                    this.showmsg(user, res.data.Rows[i], true)
-                                                }
-                                            }
-                                            setTimeout(() => {
-                                                this.isLoadMore = false;
-                                        }, 300);
-                                    }.bind(this))
-                                    this.isReadRedisMsg.push(user.ID)
+                                if (translate[1] > 0 && that.isLoadMore == false) {
+                                    that.isLoadMore = true;
+                                    that.start = that.end + 1;
+                                    that.end = that.end + 10;
+                                    
+                                    util.post("user/getSingleMessagesFromRedis", { 
+                                        userid: userid(), 
+                                        targetid: user.ID, 
+                                        start: that.start, 
+                                        end: that.end, 
+                                        isreverse: false 
+                                    }).then(function (res) {
+                                        if (res.code === 0 && res.data && res.data.Rows) {
+                                            processAndShow(res.data.Rows, true); // true 代表插入到头部
+                                        }
+                                        setTimeout(function() { that.isLoadMore = false; }, 300);
+                                    });
+                                    that.isReadRedisMsg.push(user.ID);
                                 }
                             }
-                        })
-                    }
-                },
+                        });
+                    }, 200);
+                }
+            },
+                // 进入 AI 聊天窗口
                 // 进入 AI 聊天窗口
                 aiChat: function () {
-                    var that = this;
-                    this.start = 0;
-                    this.end = 9;
-                    if (this.isDisable) {
-                        this.msglist = []; // 清空当前消息
-                        // 加载与 AI 的历史消息
-                        util.post("user/getSingleMessagesFromRedis", { userid: userid(), targetid: AI_USER_ID, start: this.start, end: this.end, isreverse: false })
-                            .then(function (res) {
-                                if (res.code === 0 && res.data && res.data.Rows) {
-                                    for (var i in res.data.Rows) {
-                                        // 为 AI 消息使用内置 AI 头像
-                                        that.loaduserinfo(res.data.Rows[i].userid, function (userinfo) {
-                                            // userinfo 可能为空或未知，使用 AI 特殊处理
-                                            // showmsg 里会根据 msg.userid 判断是否是自己
-                                        })
-                                        // 直接显示，前端会根据 msg.userid 显示为 AI
-                                        that.showmsg({ username: 'AI 助手', icon: '/asset/images/ai_bot.png' }, res.data.Rows[i], false, false);
-                                    }
+                var that = this;
+                this.start = 0;
+                this.end = 9;
+                this.isLoadMore = false;
+
+                if (this.isDisable) {
+                    this.msglist = []; 
+                    this.win = "single";
+                    this.title = "AI 助手";
+                    this.otherAvatar = '/asset/images/ai_bot.png';
+                    this.msgcontext.targetid = AI_USER_ID; // 0
+                    this.msgcontext.type = 1;              // 私聊类型
+
+                    var processAndShowAI = function(rows, isReverse) {
+                        rows.forEach(function (item, index) {
+                            // 1. 数据清洗
+                            if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) { } }
+                            
+                            // 2. 补全字段，通过 HTML v-if 检查
+                            item.type = 1; // 强转为私聊
+                            if (item.targetid === undefined) item.targetid = 0;
+                            if (item.userid === undefined) item.userid = 0;
+                            
+                            // 3. 修复 ID 0 问题
+                            if (!item.id || item.id == 0) item.id = new Date().getTime() + index + Math.random();
+
+                            // 4. 显示逻辑
+                            if (item.userid == 0) {
+                                var aiUser = { username: 'AI 助手', icon: '/asset/images/ai_bot.png' };
+                                item.userid = 0;
+                                that.showmsg(aiUser, item, isReverse, false);
+                            } else if (item.userid == userid()) {
+                                var myUser = {
+                                    username: that.info.username || '我',
+                                    icon: that.info.icon || '/asset/images/avatar0.png'
+                                };
+                                that.showmsg(myUser, item, isReverse, false);
+                            } else {
+                                that.loaduserinfo(item.userid, function (userinfo) {
+                                    that.showmsg(userinfo || {username:'用户'}, item, isReverse, false);
+                                });
+                            }
+                        });
+                    };
+
+                    // 首次加载
+                    util.post("message/getAiMessagesFromRedis", {
+                        userid: userid(),
+                        targetid: AI_USER_ID,
+                        start: this.start,
+                        end: this.end,
+                        isreverse: false
+                    }).then(function (res) {
+                        if (res.code === 0 && res.data && res.data.Rows) {
+                            processAndShowAI(res.data.Rows, false);
+                        }
+                    }).catch(function (err) { console.error(err); });
+
+                    this.setTimeFlag();
+
+                    // 滚动与加载更多
+                    setTimeout(function () {
+                        mui('.mui-scroll-wrapper').scroll({
+                            scrollY: true, scrollX: false, startX: 0, startY: 0,
+                            indicators: true, deceleration: 0.0006, bounce: true
+                        });
+                        var scrollDom = document.querySelector("#convo .mui-scroll-wrapper");
+                        if(scrollDom) window.scrollTo(0, scrollDom.scrollHeight);
+
+                        document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
+                            let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
+                            if (translate && translate.length > 1) {
+                                if (translate[1] > 0 && that.isLoadMore == false) {
+                                    that.isLoadMore = true;
+                                    that.start = that.end + 1;
+                                    that.end = that.end + 10;
+                                    
+                                    util.post("message/getAiMessagesFromRedis", {
+                                        userid: userid(),
+                                        targetid: AI_USER_ID,
+                                        start: that.start,
+                                        end: that.end,
+                                        isreverse: false
+                                    }).then(function (res) {
+                                        if (res.code === 0 && res.data && res.data.Rows) {
+                                            processAndShowAI(res.data.Rows, true);
+                                        }
+                                        setTimeout(function() { that.isLoadMore = false; }, 300);
+                                    });
                                 }
-                            }.bind(this))
-                            .catch(function (err) {
-                                console.error('加载 AI 历史消息失败:', err);
-                            });
+                            }
+                        });
+                    }, 200);
+                }
+            },
+                groupmsg: function (group) {
+                var that = this;
+                this.start = 0;
+                this.end = 9;
+                this.isLoadMore = false;
+                console.log("进入群聊:", group);
 
-                        this.setTimeFlag();
-                        this.win = "single";
-                        this.title = "AI 助手";
-                        this.otherAvatar = '/asset/images/ai_bot.png';
-                        this.msgcontext.targetid = AI_USER_ID;
-                        this.msgcontext.type = 1;
+                // 清理未读计数
+                try {
+                    this.groups.forEach(function(g){
+                        if(parseInt(g.ID) === parseInt(group.ID)) {
+                            that.unreadGroupCount = Math.max(0, (that.unreadGroupCount || 0) - (g.unread || 0));
+                            g.unread = 0;
+                        }
+                    });
+                } catch (e) { console.error(e); }
 
-                        setTimeout(function () {
-                            mui('.mui-scroll-wrapper').scroll({
-                                scrollY: true,
-                                scrollX: false,
-                                startX: 0,
-                                startY: 0,
-                                indicators: true,
-                                deceleration: 0.0006,
-                                bounce: true
-                            });
-                        }, 100);
-                    }
-                },
+                if (this.isDisable) {
+                    this.msglist = []; 
+                    this.win = "group";
+                    this.title = group.groupname;
+                    this.msgcontext.targetid = parseInt(group.ID);
+                    this.msgcontext.type = 2; // 群聊类型
+                    this.otherAvatar = group.icon || '/asset/images/avatar0.png';
+
+                    // 核心渲染逻辑
+                    var processAndShowGroup = function(rows, isReverse) {
+                        rows.forEach(function (item, index) {
+                            // 1. 数据清洗
+                            if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) { } }
+                            item.type = 2; // 强转为群聊类型
+                            item.targetid = parseInt(group.ID); // 修复 targetid 丢失问题
+                            
+                            // 2. 修复 ID 问题
+                            if (!item.id || item.id == 0) item.id = new Date().getTime() + index + Math.random();
+
+                            // 3. 显示逻辑
+                            if (item.userid == userid()) {
+                                var myUser = {
+                                    username: that.info.username || '我',
+                                    icon: that.info.icon || '/asset/images/avatar0.png'
+                                };
+                                that.showmsg(myUser, item, isReverse, false);
+                            } else {
+                                // 查询群友信息
+                                that.loaduserinfo(item.userid, function (userinfo) {
+                                    if (!userinfo) userinfo = { username: '群友'+item.userid, icon: '/asset/images/avatar0.png' };
+                                    that.showmsg(userinfo, item, isReverse, false);
+                                });
+                            }
+                        });
+                    };
+
+                    // 首次加载
+                    util.post("message/getGroupMessagesFromRedis", { 
+                        groupId: group.ID, 
+                        start: this.start, 
+                        end: this.end 
+                    }).then(function (res) {
+                        if (res.code === 0 && res.data && res.data.Rows) {
+                            processAndShowGroup(res.data.Rows, false);
+                        }
+                    }).catch(function (err) { console.error(err); });
+
+                    this.setTimeFlag();
+
+                    // 滚动与加载更多
+                    setTimeout(function () {
+                        mui('.mui-scroll-wrapper').scroll({
+                            scrollY: true, scrollX: false, startX: 0, startY: 0,
+                            indicators: true, deceleration: 0.0006, bounce: true
+                        });
+                        var scrollDom = document.querySelector("#convo .mui-scroll-wrapper");
+                        if(scrollDom) window.scrollTo(0, scrollDom.scrollHeight);
+
+                        document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
+                            let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
+                            if (translate && translate.length > 1) {
+                                if (translate[1] > 0 && that.isLoadMore == false) {
+                                    that.isLoadMore = true;
+                                    that.start = that.end + 1;
+                                    that.end = that.end + 10;
+                                    
+                                    util.post("message/getGroupMessagesFromRedis", {
+                                        groupId: group.ID,
+                                        start: that.start,
+                                        end: that.end
+                                    }).then(function (res) {
+                                        if (res.code === 0 && res.data && res.data.Rows) {
+                                            processAndShowGroup(res.data.Rows, true);
+                                        }
+                                        setTimeout(function() { that.isLoadMore = false; }, 300);
+                                    });
+                                }
+                            }
+                        });
+                    }, 200);
+                }
+            },
                 // 群聊的初始化（保留更完整的实现在后面）
                 // loaduserinfo: function (userid, cb) {
                 //     userid = "" + userid;
@@ -745,85 +917,38 @@
                 sendmsg: function () {
 
                 },
-                groupmsg: function (group) {
-                    console.log("进入群聊:", group);
-                    
-                    if (this.isDisable) {
-                        this.setTimeFlag();
-                        
-                        // 清空当前消息列表
-                        this.msglist = [];
-                        
-                        this.win = "group";
-                        this.title = group.groupname;
-                        this.msgcontext.targetid = parseInt(group.ID);
-                        this.msgcontext.type = 2;
-                        this.otherAvatar = group.Img || '/asset/images/avatar0.png';
-                        // 进入群聊时清空该群未读计数并更新全局未读
-                        try {
-                            for (var i in this.groups) {
-                                if (parseInt(this.groups[i].ID) === parseInt(group.ID)) {
-                                    var prev = this.groups[i].unread || 0;
-                                    if (prev > 0) {
-                                        this.unreadGroupCount = Math.max(0, (this.unreadGroupCount || 0) - prev);
-                                    }
-                                    this.$set(this.groups[i], 'unread', 0);
-                                    break;
-                                }
-                            }
-                        } catch (e) {
-                            console.error('清理群未读失败', e);
-                        }
-
-                        // 【新增】从 Redis 读取该群组的历史消息
-                        this.loadGroupMessagesFromRedis(group.ID);
-                        
-                        // 初始化滚动
-                        setTimeout(function () {
-                            mui('.mui-scroll-wrapper').scroll({
-                                scrollY: true,
-                                scrollX: false,
-                                startX: 0,
-                                startY: 0,
-                                indicators: true,
-                                deceleration: 0.0006,
-                                bounce: true
-                            });
-                        }, 100);
-                    }
-                },
                 
                 // 【新增】从 Redis 读取群聊消息
-                loadGroupMessagesFromRedis: function (groupId) {
-                    // 【改进】每次都重新加载（不使用缓存检查）
-                    // console.log("【loadGroupMessagesFromRedis】开始加载群聊历史消息，groupId=", groupId);
+                // loadGroupMessagesFromRedis: function (groupId) {
+                //     // 【改进】每次都重新加载（不使用缓存检查）
+                //     // console.log("【loadGroupMessagesFromRedis】开始加载群聊历史消息，groupId=", groupId);
                     
-                    var that = this;
-                    util.post("message/getGroupMessagesFromRedis", { 
-                        groupId: groupId 
-                    })
-                    .then(function (res) {
-                        // console.log("【loadGroupMessagesFromRedis】从 Redis 获取消息结果:", res);
+                //     var that = this;
+                //     util.post("message/getGroupMessagesFromRedis", { 
+                //         groupId: groupId 
+                //     })
+                //     .then(function (res) {
+                //         // console.log("【loadGroupMessagesFromRedis】从 Redis 获取消息结果:", res);
                         
-                        if (res.code === 0 && res.data && res.data.length > 0) {
-                            // 遍历消息列表，依次显示
-                            res.data.forEach((msg, index) => {
-                                // 使用延时来避免一次性渲染过多消息导致卡顿
-                                setTimeout(() => {
-                                        that.loaduserinfo(msg.userid, function (user) {
-                                        that.showmsg(user, msg, false, false);
-                                    });
-                                }, index * 50);
-                            });
-                        } else if (res.code !== 0) {
-                            console.log("获取群聊消息失败:", res.msg);
-                        }
+                //         if (res.code === 0 && res.data && res.data.length > 0) {
+                //             // 遍历消息列表，依次显示
+                //             res.data.forEach((msg, index) => {
+                //                 // 使用延时来避免一次性渲染过多消息导致卡顿
+                //                 setTimeout(() => {
+                //                         that.loaduserinfo(msg.userid, function (user) {
+                //                         that.showmsg(user, msg, false, false);
+                //                     });
+                //                 }, index * 50);
+                //             });
+                //         } else if (res.code !== 0) {
+                //             console.log("获取群聊消息失败:", res.msg);
+                //         }
                         
-                    })
-                    .catch(function (err) {
-                        console.error("从 Redis 读取群聊消息失败:", err);
-                    });
-                },
+                //     })
+                //     .catch(function (err) {
+                //         console.error("从 Redis 读取群聊消息失败:", err);
+                //     });
+                // },
                 
                 // findfriends: function () {
                 //     var that = this;

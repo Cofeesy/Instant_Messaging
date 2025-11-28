@@ -62,6 +62,7 @@ func InitRouter() *gin.Engine {
 	// redis历史消息
 	r.POST("/user/getSingleMessagesFromRedis", service.GetSingleMessagesFromRedis)
 	r.POST("/message/getGroupMessagesFromRedis", service.GetGroupMessagesFromRedis)
+	r.POST("/message/getAiMessagesFromRedis", service.GetAiMessagesFromRedis)
 
 
 	// 

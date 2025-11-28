@@ -368,7 +368,7 @@ func GetSingleMessagesFromRedis(c *gin.Context) {
 	data := gin.H{
 		"Rows": redismsg,
 	}
-	response.OkWithDetailed(data, "返回redis消息成功", c)
+	response.OkWithDetailed(data, "返回私聊redis消息成功", c)
 }
 
 // 上传文件不需要绑定，文件存储在前端文件夹，不涉及数据库存储
@@ -476,11 +476,42 @@ func GetGroupMessagesFromRedis(c *gin.Context) {
 	}
 
 	// 从 Redis 中读取群聊消息
-	messages, err := models.GetGroupHistoryMessages(&groupRedis)
+	redismsg, err := models.GetGroupHistoryMessages(&groupRedis)
 	if err != nil {
 		response.FailWithMessage("读取消息失败: "+err.Error(), c)
 		return
 	}
+	data := gin.H{
+		"Rows": redismsg,
+	}
+	response.OkWithDetailed(data, "返回群聊redis消息成功", c)
 
-	response.OkWithData(messages, c)
 }
+
+// ai聊天历史记录
+func GetAiMessagesFromRedis(c *gin.Context) {
+	var aiRedis system.AiRedisMsgPayload
+
+	if err := c.ShouldBindJSON(&aiRedis); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+
+	// 如果没有提供分页参数，默认读取所有消息
+	if aiRedis.End == 0 {
+		aiRedis.End = -1
+	}
+
+	// 从 Redis 中读取群聊消息
+	redismsg, err := models.GetAiHistoryMessages(&aiRedis)
+	if err != nil {
+		response.FailWithMessage("读取消息失败: "+err.Error(), c)
+		return
+	}
+	
+	data := gin.H{
+		"Rows": redismsg,
+	}
+	response.OkWithDetailed(data, "返回ai_redis消息成功", c)
+}
+

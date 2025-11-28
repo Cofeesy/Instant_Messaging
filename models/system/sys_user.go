@@ -109,3 +109,10 @@ type GroupRedisPayload struct {
 	Start   int64 `json:"start"`
 	End     int64 `json:"end"`
 }
+
+type AiRedisMsgPayload struct {
+	UserId  uint  `json:"userid"`
+	TargetId  uint  `json:"targetid"`
+	Start   int64 `json:"start"`
+	End     int64 `json:"end"`
+}

@@ -15,6 +15,7 @@ var (
 	WriteTimeout time.Duration
 
 	JwtSecret string
+	GeminiKey string
 
 	DelayHeartbeat   uint64
 	HeartbeatHz      uint64
@@ -37,6 +38,7 @@ func init() {
 func LoadAPP() {
 	app := Cfg.Section("app")
 	JwtSecret = app.Key("JWT_SECRET").MustString("!@)*#)!@U#@*!@!)")
+	GeminiKey = app.Key("GEMINI_KEY").MustString("")
 	RunMode = app.Key("RUN_MODES").MustString("debug")
 }
 

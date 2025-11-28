@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	// "gin_chat/models"
 	"gin_chat/models/system"
 	"gin_chat/utils"
@@ -33,7 +34,7 @@ type Message struct {
 	gorm.Model
 	UserId     uint   `json:"userid"`
 	TargetId   uint   `json:"targetid"`
-	Type       int    `json:"type"`  // 1私聊 2群聊 3心跳 
+	Type       int    `json:"type"`  // 1私聊 2群聊 3心跳
 	Media      int    `json:"media"` // 1文字 2暂时没用 3语音 4图片，表情包
 	Content    string `json:"content"`
 	CreateTime uint64 `json:"createTime"`
@@ -165,10 +166,10 @@ func (client *Client) dispatchMsg(msg []byte) {
 	switch Msg.Type {
 	// 私聊
 	case 1:
-		if Msg.TargetId==0{
+		if Msg.TargetId == 0 {
 			ChatWithGemini(msg)
 			return
-		}else{
+		} else {
 			SendMsgToUser(client.User_id, Msg.TargetId, msg)
 			return
 		}
@@ -208,10 +209,10 @@ func (client *Client) dispatchMsg(msg []byte) {
 		client.HeartbeatTime = uint64(time.Now().Unix())
 		return
 
-	// gemini聊天
-	// case 4:
-	// 	ChatWithGemini(msg)
-	// 	return
+		// gemini聊天
+		// case 4:
+		// 	ChatWithGemini(msg)
+		// 	return
 	}
 }
 
@@ -456,8 +457,9 @@ func ChatWithGemini(msg []byte) {
 	// 客户端创建
 	ctx := context.Background()
 	cc := genai.ClientConfig{
-		APIKey: "AIzaSyCcb4xiwuUgfu56Ie8y8T9oV5Y6-VIIf50",
+		APIKey: setting.GeminiKey,
 	}
+
 	aiClient, err := genai.NewClient(ctx, &cc)
 	if err != nil {
 		fmt.Println(err)
@@ -472,14 +474,31 @@ func ChatWithGemini(msg []byte) {
 		nil,
 	)
 
+	// redis存ai消息
+	key := fmt.Sprintf("aichat:%d:%d", 0, Msg.UserId)
+
+	score, err := utils.RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		fmt.Println("获取群聊消息数量失败:", err)
+	}
+
+	// 使用 Redis 有序集合存储群聊消息
+	if score == 0 {
+		utils.RDB.ZAdd(ctx, key, redis.Z{Score: 0, Member: msg})
+	} else {
+		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
+	}
+
 	client := UserToClient[Msg.UserId]
 
+	aiRedisContent := " "
 	// 将流消息发送给自己
 	for chunk, err := range stream {
 		if err == nil {
 			part := chunk.Candidates[0].Content.Parts[0]
-			fmt.Print(part.Text)
+			// fmt.Print(part.Text)
 			// 发送给谁呢,发送给自己吧，由前端设置显示
+			aiRedisContent += part.Text
 			Text, err := json.Marshal(part.Text)
 			if err == nil {
 				client.SendDataQueue <- Text
@@ -491,4 +510,38 @@ func ChatWithGemini(msg []byte) {
 		}
 
 	}
+	// 这里也得记录，因为是发给自己
+	aiRedisMsg := Msg
+	aiRedisMsg.UserId, aiRedisMsg.TargetId = aiRedisMsg.TargetId, aiRedisMsg.UserId
+	aiRedisMsg.Content = aiRedisContent
+	airedismsg, _ := json.Marshal(aiRedisMsg)
+	utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score + 1), Member: airedismsg})
+}
+
+func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*Message, error) {
+	ctx := context.Background()
+
+	// 【修改】群组消息的 Redis key，使用统一的命名规范
+	key := fmt.Sprintf("aichat:%d:%d", 0, AiRedisMsgPayload.UserId)
+
+	// 从 Redis 有序集合中读取消息
+	// ZRange 是从低分数到高分数（正序）
+	stringmsgs, err := utils.RDB.ZRange(ctx, key, AiRedisMsgPayload.Start, AiRedisMsgPayload.End).Result()
+	if err != nil && err != redis.Nil {
+		fmt.Println("从Redis读取群聊消息失败:", err)
+		return nil, err
+	}
+
+	msgs := make([]*Message, 0)
+	for _, v := range stringmsgs {
+		var msg Message
+		err := json.Unmarshal([]byte(v), &msg)
+		if err != nil {
+			fmt.Println("解析消息失败:", err)
+			continue
+		}
+		msgs = append(msgs, &msg)
+	}
+
+	return msgs, nil
 }
