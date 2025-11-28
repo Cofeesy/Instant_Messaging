@@ -317,17 +317,17 @@ func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 // }
 
 // 读取start-end的redis数据，并返回给前端
-func GetSingleHistoryMsg(redisPayload system.SingleRedisPayload) ([]*Message, error) {
+func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*Message, error) {
 	// 从redis里面查找
 
 	ctx := context.Background()
 
 	// 【修改】组装私聊消息的 key
 	key := " "
-	if redisPayload.UserId < redisPayload.TargetId {
-		key = fmt.Sprintf("chat:private:%d:%d", redisPayload.UserId, redisPayload.TargetId)
+	if singleRedisPayload.UserId < singleRedisPayload.TargetId {
+		key = fmt.Sprintf("chat:private:%d:%d", singleRedisPayload.UserId, singleRedisPayload.TargetId)
 	} else {
-		key = fmt.Sprintf("chat:private:%d:%d", redisPayload.TargetId, redisPayload.UserId)
+		key = fmt.Sprintf("chat:private:%d:%d", singleRedisPayload.TargetId, singleRedisPayload.UserId)
 	}
 	// 前端传来的 Start/End 是相对于最新消息的偏移（Start=0, End=9 表示最近 10 条）
 	// 需要把它们转换为 Redis 有序集合的正序索引：
@@ -340,7 +340,7 @@ func GetSingleHistoryMsg(redisPayload system.SingleRedisPayload) ([]*Message, er
 		return nil, err
 	}
 
-	if redisPayload.End == -1 {
+	if singleRedisPayload.End == -1 {
 		// 返回所有消息（正序）
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
 		if err != nil {
@@ -352,8 +352,8 @@ func GetSingleHistoryMsg(redisPayload system.SingleRedisPayload) ([]*Message, er
 			return []*Message{}, nil
 		}
 		// 计算索引
-		s := int64(total) - 1 - redisPayload.End
-		e := int64(total) - 1 - redisPayload.Start
+		s := int64(total) - 1 - singleRedisPayload.End
+		e := int64(total) - 1 - singleRedisPayload.Start
 		if s < 0 {
 			s = 0
 		}
@@ -392,20 +392,50 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*Message, 
 
 	// 从 Redis 有序集合中读取消息
 	// ZRange 是从低分数到高分数（正序）
-	stringmsgs, err := utils.RDB.ZRange(ctx, key, groupRedis.Start, groupRedis.End).Result()
-	if err != nil && err != redis.Nil {
-		fmt.Println("从Redis读取群聊消息失败:", err)
+	var stringmsgs []string
+	// 先获取当前总数
+	total, err := utils.RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if groupRedis.End == -1 {
+		// 返回所有消息（正序）
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// 计算正序的 start/end
+		if total == 0 {
+			return []*Message{}, nil
+		}
+		// 计算索引
+		s := int64(total) - 1 - groupRedis.End
+		e := int64(total) - 1 - groupRedis.Start
+		if s < 0 {
+			s = 0
+		}
+		if e < 0 {
+			// 没有可返回的消息
+			return []*Message{}, nil
+		}
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
 		return nil, err
 	}
 
 	msgs := make([]*Message, 0)
 	for _, v := range stringmsgs {
+		// 每一个string转为[]byte
+		stringmsg := []byte(v)
+		// 然后将其映射到Message上
 		var msg Message
-		err := json.Unmarshal([]byte(v), &msg)
-		if err != nil {
-			fmt.Println("解析消息失败:", err)
-			continue
-		}
+		json.Unmarshal(stringmsg, &msg)
 		msgs = append(msgs, &msg)
 	}
 
@@ -526,9 +556,40 @@ func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*Messa
 
 	// 从 Redis 有序集合中读取消息
 	// ZRange 是从低分数到高分数（正序）
-	stringmsgs, err := utils.RDB.ZRange(ctx, key, AiRedisMsgPayload.Start, AiRedisMsgPayload.End).Result()
-	if err != nil && err != redis.Nil {
-		fmt.Println("从Redis读取群聊消息失败:", err)
+	var stringmsgs []string
+	// 先获取当前总数
+	total, err := utils.RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	if AiRedisMsgPayload.End == -1 {
+		// 返回所有消息（正序）
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// 计算正序的 start/end
+		if total == 0 {
+			return []*Message{}, nil
+		}
+		// 计算索引
+		s := int64(total) - 1 - AiRedisMsgPayload.End
+		e := int64(total) - 1 - AiRedisMsgPayload.Start
+		if s < 0 {
+			s = 0
+		}
+		if e < 0 {
+			// 没有可返回的消息
+			return []*Message{}, nil
+		}
+		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
 		return nil, err
 	}
 
