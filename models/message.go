@@ -33,7 +33,7 @@ type Message struct {
 	gorm.Model
 	UserId     uint   `json:"userid"`
 	TargetId   uint   `json:"targetid"`
-	Type       int    `json:"type"`  // 1私聊 2群聊 3心跳 4gemini聊天
+	Type       int    `json:"type"`  // 1私聊 2群聊 3心跳 
 	Media      int    `json:"media"` // 1文字 2暂时没用 3语音 4图片，表情包
 	Content    string `json:"content"`
 	CreateTime uint64 `json:"createTime"`
@@ -165,7 +165,7 @@ func (client *Client) dispatchMsg(msg []byte) {
 	switch Msg.Type {
 	// 私聊
 	case 1:
-		if Msg.TargetId==999999{
+		if Msg.TargetId==0{
 			ChatWithGemini(msg)
 			return
 		}else{
@@ -424,8 +424,6 @@ func CleanConnection(param interface{}) (result bool) {
 			fmt.Println("cleanConnection err", r)
 		}
 	}()
-	//fmt.Println("定时任务,清理超时连接 ", param)
-	//node.IsHeartbeatTimeOut()
 	currentTime := uint64(time.Now().Unix())
 	for i := range UserToClient {
 		client := UserToClient[i]
