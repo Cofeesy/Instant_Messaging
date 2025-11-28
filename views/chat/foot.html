@@ -24,12 +24,11 @@
     //维护用户头像
     function uploadUserInfo(dom) {
         util.uploadfile("attach/upload", dom).then(function (res) {
-            if (res.code == 0) {
                 app.info.icon = res.data;
                 console.log(res.data);
-            }
         })
     }
+    
 
 
 
@@ -38,6 +37,8 @@
         var id = sessionStorage.getItem("userid");
         return id ? parseInt(id, 10) : 0;
     }
+    // AI 伪用户 ID（后端约定）
+    var AI_USER_ID = 999999;
     var app = new Vue(
         {
             el: "#pageapp",
@@ -61,11 +62,12 @@
                     "username": "",
                     "memo": "",
                 },
-                //用户信息
                 info: {
-                    "id": "",
-                    "icon": "",
-                    "username": "",
+                    id: "",
+                    icon: "",
+                    username: "",
+                    phone: "",
+                    email: "",
                 },
                 isDisable: true,
                 isLoadMore: false,
@@ -472,18 +474,53 @@
                         })
                     }
                 },
-                //群聊的初始化
-                groupmsg: function (group) {
-                    console.log("进入 groupmsg,传入的 group 对象是:", group);
-                    console.log("即将设置的标题名称是:", group.groupname);
+                // 进入 AI 聊天窗口
+                aiChat: function () {
+                    var that = this;
+                    this.start = 0;
+                    this.end = 9;
                     if (this.isDisable) {
-                        this.setTimeFlag()
-                        this.win = "group";
-                        this.title = group.groupname;
-                        this.msgcontext.targetid = parseInt(group.ID);
-                        this.msgcontext.type = 2;
+                        this.msglist = []; // 清空当前消息
+                        // 加载与 AI 的历史消息
+                        util.post("user/getSingleMessagesFromRedis", { userid: userid(), targetid: AI_USER_ID, start: this.start, end: this.end, isreverse: false })
+                            .then(function (res) {
+                                if (res.code === 0 && res.data && res.data.Rows) {
+                                    for (var i in res.data.Rows) {
+                                        // 为 AI 消息使用内置 AI 头像
+                                        that.loaduserinfo(res.data.Rows[i].userid, function (userinfo) {
+                                            // userinfo 可能为空或未知，使用 AI 特殊处理
+                                            // showmsg 里会根据 msg.userid 判断是否是自己
+                                        })
+                                        // 直接显示，前端会根据 msg.userid 显示为 AI
+                                        that.showmsg({ username: 'AI 助手', icon: '/asset/images/ai_bot.png' }, res.data.Rows[i], false, false);
+                                    }
+                                }
+                            }.bind(this))
+                            .catch(function (err) {
+                                console.error('加载 AI 历史消息失败:', err);
+                            });
+
+                        this.setTimeFlag();
+                        this.win = "single";
+                        this.title = "AI 助手";
+                        this.otherAvatar = '/asset/images/ai_bot.png';
+                        this.msgcontext.targetid = AI_USER_ID;
+                        this.msgcontext.type = 1;
+
+                        setTimeout(function () {
+                            mui('.mui-scroll-wrapper').scroll({
+                                scrollY: true,
+                                scrollX: false,
+                                startX: 0,
+                                startY: 0,
+                                indicators: true,
+                                deceleration: 0.0006,
+                                bounce: true
+                            });
+                        }, 100);
                     }
                 },
+                // 群聊的初始化（保留更完整的实现在后面）
                 // loaduserinfo: function (userid, cb) {
                 //     userid = "" + userid;
                 //     console.log(">>>> " + userid)
@@ -630,28 +667,70 @@
                     this.webSocket.send(JSON.stringify(authMessage));
                 }.bind(this);
 
-                // 消息处理 (onmessage) 基本保持不变
+                // 消息处理：支持 JSON 消息 && AI 流式字符串（后端将 token 作为 JSON string 发送）
                 this.webSocket.onmessage = function (evt) {
                     console.log("【WebSocket onmessage】收到数据:", evt.data)
-                    if (evt.data.indexOf("}") > -1) {
-                        try {
-                            var data = JSON.parse(evt.data);
+                    var handleToken = function (token) {
+                        if (!token) return;
+                        console.log('[WebSocket] Received AI token:', token);
 
-                            // (可选但推荐) 处理后端可能返回的认证失败消息
-                            if (data.cmd === -1) { // 假设 -1 是认证失败的命令号
-                                mui.toast('登录认证失败: ' + data.msg);
-                                this.webSocket.close(); // 认证失败，关闭连接
+                        // 1. 获取消息列表的最后一条
+                        var lastIndex = this.msglist.length - 1;
+                        var lastItem = lastIndex >= 0 ? this.msglist[lastIndex] : null;
+
+                        // 2. 判断最后一条消息是不是 AI 发的
+                        // 注意：这里不再循环查找，只看最后一条。
+                        // 如果最后一条是你发的，lastItem.msg.userid 就不是 AI_USER_ID，就会走 else 分支创建新气泡
+                        if (lastItem && lastItem.msg && lastItem.msg.userid == AI_USER_ID) {
+                            // 情况 A：最后一条就是 AI 消息 -> 追加内容
+                            lastItem.msg.content = (lastItem.msg.content || '') + token;
+                            // 使用 $set 确保 Vue 视图更新
+                            this.$set(this.msglist, lastIndex, lastItem);
+                            
+                            // 可选：流式输出时自动滚动到底部
+                            this.$nextTick(() => {
+                                // 简单的滚动到底部逻辑，或者调用你现有的滚动方法
+                                var scrollDom = document.querySelector("#convo .mui-scroll-wrapper");
+                                // 这里可能需要根据你的具体滚动插件调整
+                            });
+
+                        } else {
+                            // 情况 B：最后一条不是 AI (例如是用户刚发的问题) -> 创建新的聊天框
+                            var aiUser = { username: 'AI 助手', icon: '/asset/images/ai_bot.png' };
+                            var aiMsg = { 
+                                userid: AI_USER_ID, 
+                                media: 1, 
+                                content: token, 
+                                createTime: new Date().getTime(), 
+                                type: 1 
+                            };
+                            // false, false 代表不倒序，不是历史记录加载
+                            this.showmsg(aiUser, aiMsg, false, false);
+                        }
+                    }.bind(this);
+
+                    try {
+                        var parsed = JSON.parse(evt.data);
+                        if (typeof parsed === 'object') {
+                            if (parsed.cmd === -1) {
+                                mui.toast('登录认证失败: ' + parsed.msg);
+                                this.webSocket.close();
                                 return;
                             }
-
-                            console.log("【WebSocket】recv json <==" + evt.data)
-                            console.log("【WebSocket】即将调用 this.onmessage，this=", this);
-                            this.onmessage(data);
-                        } catch(e) {
-                            console.error("【WebSocket】JSON 解析失败:", e, "原始数据:", evt.data);
+                            console.log("【WebSocket】recv json <==", parsed)
+                            this.onmessage(parsed);
+                        } else if (typeof parsed === 'string') {
+                            handleToken(parsed);
+                        } else {
+                            console.log('【WebSocket】收到未知 JSON 类型:', parsed);
                         }
-                    } else {
-                        console.log("【WebSocket】recv 非JSON <==" + evt.data)
+                    } catch (err) {
+                        // 解析失败，可能是后端直接发送的纯文本 token
+                        try {
+                            handleToken(evt.data);
+                        } catch (e) {
+                            console.error('处理非JSON数据失败:', e, evt.data);
+                        }
                     }
                 }.bind(this)
 
@@ -717,14 +796,14 @@
                 // 【新增】从 Redis 读取群聊消息
                 loadGroupMessagesFromRedis: function (groupId) {
                     // 【改进】每次都重新加载（不使用缓存检查）
-                    console.log("【loadGroupMessagesFromRedis】开始加载群聊历史消息，groupId=", groupId);
+                    // console.log("【loadGroupMessagesFromRedis】开始加载群聊历史消息，groupId=", groupId);
                     
                     var that = this;
                     util.post("message/getGroupMessagesFromRedis", { 
                         groupId: groupId 
                     })
                     .then(function (res) {
-                        console.log("【loadGroupMessagesFromRedis】从 Redis 获取消息结果:", res);
+                        // console.log("【loadGroupMessagesFromRedis】从 Redis 获取消息结果:", res);
                         
                         if (res.code === 0 && res.data && res.data.length > 0) {
                             // 遍历消息列表，依次显示
@@ -764,7 +843,7 @@
                 // },
                 findfriends: function () {
                     var that = this; // 在 Promise 外部保存 this 的引用
-                    console.log("Calling util.post('findFriends')..."); 
+                    // console.log("Calling util.post('findFriends')..."); 
 
                     // util.post 返回一个 Promise
                     util.post("findFriends", { userid: userid() }) 

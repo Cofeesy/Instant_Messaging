@@ -6,6 +6,16 @@
         <h1 class="mui-title">联系人</h1>
     </header>
     <ul class="mui-table-view mui-table-view-chevron">
+            <!-- AI 助手 固定项 -->
+            <li class="mui-table-view-cell mui-media" @tap="aiChat()">
+                <a class="">
+                    <img class="mui-media-object mui-pull-left avatar" src="/asset/images/ai_bot.png">
+                    <div class="mui-media-body">
+                        <span>AI 助手</span>
+                        <p class='mui-ellipsis'>智能问答助手</p>
+                    </div>
+                </a>
+            </li>
         <li v-for="item in friends" class="mui-table-view-cell mui-media" @tap="singlemsg(item)">
             <a class="">
                 <img class="mui-media-object mui-pull-left avatar" :src="item.icon ||'/asset/images/avatar0.png'">

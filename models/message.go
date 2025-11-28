@@ -165,9 +165,14 @@ func (client *Client) dispatchMsg(msg []byte) {
 	switch Msg.Type {
 	// 私聊
 	case 1:
+		if Msg.TargetId==999999{
+			ChatWithGemini(msg)
+			return
+		}else{
+			SendMsgToUser(client.User_id, Msg.TargetId, msg)
+			return
+		}
 		// fmt.Println("【DEBUG】处理私聊消息，从", client.User_id, "到", Msg.TargetId)
-		SendMsgToUser(client.User_id, Msg.TargetId, msg)
-		return
 	// 群聊
 	case 2:
 		// 这里的id是groupid
@@ -204,9 +209,9 @@ func (client *Client) dispatchMsg(msg []byte) {
 		return
 
 	// gemini聊天
-	case 4:
-		ChatWithGemini(msg)
-		return
+	// case 4:
+	// 	ChatWithGemini(msg)
+	// 	return
 	}
 }
 
@@ -249,7 +254,6 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 	} else {
 		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
 	}
-
 
 	if ok && recieve_client != nil {
 		// 这里的 select 是为了防止写入阻塞导致协程泄露（可选，但推荐）
@@ -470,23 +474,23 @@ func ChatWithGemini(msg []byte) {
 		nil,
 	)
 
-	client:=UserToClient[Msg.UserId]
+	client := UserToClient[Msg.UserId]
 
 	// 将流消息发送给自己
 	for chunk, err := range stream {
-		if err==nil{
+		if err == nil {
 			part := chunk.Candidates[0].Content.Parts[0]
 			fmt.Print(part.Text)
 			// 发送给谁呢,发送给自己吧，由前端设置显示
-			Text,err:=json.Marshal(part.Text)
-			if err==nil{
+			Text, err := json.Marshal(part.Text)
+			if err == nil {
 				client.SendDataQueue <- Text
-			}else{
+			} else {
 				fmt.Println(err)
 			}
-		}else{
+		} else {
 			fmt.Println(err)
 		}
-		
+
 	}
 }
