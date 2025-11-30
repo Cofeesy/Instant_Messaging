@@ -49,6 +49,10 @@ func (message *Message) TableName() string {
 	return "message"
 }
 
+func init(){
+	go GlobalHub.Management()
+}
+
 // 升级器:将Http协议升级为Websocket协议
 // 为什么？
 // 定义协议升级的具体细节
@@ -69,10 +73,6 @@ type Client struct {
 	SendDataQueue chan []byte
 }
 
-// 客户端和用户的映射？
-// userid to client
-var UserToClient map[uint]*Client = make(map[uint]*Client, 0)
-
 // 监控发送和接受
 func Myws(ws *websocket.Conn, userid uint) {
 
@@ -88,25 +88,15 @@ func Myws(ws *websocket.Conn, userid uint) {
 
 	// 映射
 	// map加读写锁控制并发安全
-	mu.Lock()
-	UserToClient[userid] = client
-	mu.Unlock()
+	// mu.Lock()
+	// UserToClient[userid] = client
+	// mu.Unlock()
 
-	go client.Send()
-	go client.Recieve()
+	GlobalHub.Register<-client
 
-	// 这里应该执行调度
-
-	// 刚启动测试给用户发消息
-	// str := "欢迎进入聊天系统"
-	// strbyte, _ := json.Marshal(str)
-	// SendMsgToUser(userid, strbyte)
 
 }
 
-// 解析收到的消息
-
-// 编码待发送消息
 
 // 每个客户端一直监听即将发送的信息
 func (client *Client) Send() {
@@ -127,12 +117,19 @@ func (client *Client) Send() {
 
 // 监听听并读取接受到的信息，需要一个协程持续监听，这是每一个连接进来的客户端需要做的
 func (client *Client) Recieve() {
-	// 接受监听消息
-	// var Msg Message;
+
+	// 异常执行
+	defer func() {
+        GlobalHub.UnRegister <- client
+		// 断开wesocket连接
+		client.Conn.Close()
+    }()
+	
 	for {
 		_, msg, err := client.Conn.ReadMessage()
 		if err != nil {
 			fmt.Println("read1:", err.Error())
+			break
 		}
 		// 将数据序列化为代码形式
 		// 需要加指针
@@ -160,7 +157,6 @@ func (client *Client) dispatchMsg(msg []byte) {
 		return
 	}
 
-	// fmt.Println("【DEBUG】dispatchMsg: 收到消息，Type=", Msg.Type, ", 发送者ID=", Msg.UserId, ", 目标ID=", Msg.TargetId)
 
 	// TODO:target设置-1的时候会报错，但不影响通信
 	switch Msg.Type {
@@ -173,11 +169,9 @@ func (client *Client) dispatchMsg(msg []byte) {
 			SendMsgToUser(client.User_id, Msg.TargetId, msg)
 			return
 		}
-		// fmt.Println("【DEBUG】处理私聊消息，从", client.User_id, "到", Msg.TargetId)
 	// 群聊
 	case 2:
 		// 这里的id是groupid
-		// 查找群成员id
 		var contacts []Contact = make([]Contact, 0)
 		var IDs []uint = make([]uint, 0)
 		db.Where("target_id=? AND relation=?", Msg.TargetId, 2).Find(&contacts)
@@ -226,7 +220,7 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 
 	mu.RLock()
 	// send_client := UserToClient[formid]
-	recieve_client, ok := UserToClient[targetId]
+	recieve_client, ok :=GlobalHub.UserToClient[targetId]
 	mu.RUnlock()
 
 	// TODO:将消息存储到redis上
@@ -298,7 +292,7 @@ func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 
 	for _, v := range ids {
 		mu.RLock()
-		client := UserToClient[v]
+		client := GlobalHub.UserToClient[v]
 		mu.RUnlock()
 		if client != nil {
 			select {
@@ -456,8 +450,8 @@ func CleanConnection(param interface{}) (result bool) {
 		}
 	}()
 	currentTime := uint64(time.Now().Unix())
-	for i := range UserToClient {
-		client := UserToClient[i]
+	for i := range GlobalHub.UserToClient {
+		client := GlobalHub.UserToClient[i]
 		if client.IsHeartbeatTimeOut(currentTime) {
 			fmt.Println("心跳超时..... 关闭连接：", client)
 			client.Conn.Close()
@@ -519,14 +513,13 @@ func ChatWithGemini(msg []byte) {
 		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
 	}
 
-	client := UserToClient[Msg.UserId]
+	client := GlobalHub.UserToClient[Msg.UserId]
 
 	aiRedisContent := " "
 	// 将流消息发送给自己
 	for chunk, err := range stream {
 		if err == nil {
 			part := chunk.Candidates[0].Content.Parts[0]
-			// fmt.Print(part.Text)
 			// 发送给谁呢,发送给自己吧，由前端设置显示
 			aiRedisContent += part.Text
 			Text, err := json.Marshal(part.Text)

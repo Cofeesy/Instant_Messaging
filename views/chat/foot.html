@@ -1185,7 +1185,21 @@
                         this.webSocket.send(JSON.stringify(msg))
                     }
 
-                }
+                },
+                quit: function () {
+                    // 1. 清除本地存储的 Token 和用户信息
+                    sessionStorage.removeItem("userid");
+                    sessionStorage.removeItem("userinfo");
+                    sessionStorage.removeItem("token"); 
+
+                    // 2. 主动断开 WebSocket 连接 
+                    if (this.webSocket && this.webSocket.close) {
+                        this.webSocket.close();
+                    }
+
+                    // 3. 跳转回登录页面
+                    location.href = "/index"; 
+                },
 
 
             },
