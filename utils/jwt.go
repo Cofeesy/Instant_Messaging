@@ -10,17 +10,17 @@ var JwtSecret = []byte(setting.JwtSecret)
 
 // 自定义的
 type Claims struct {
+	ID uint
 	Username string `json:"username"`
-	Password string `json:"password"`
 	jwt.StandardClaims
 }
 
 
 // 生成token
-func GenerateToken(username, password string)(string, error){
+func GenerateToken(id uint,username string)(string, error){
 	Claims:=Claims{
+		ID:id,
 		Username: username,
-		Password: password,
 		StandardClaims: jwt.StandardClaims{
 			//30天后过期
 			ExpiresAt: time.Now().Add(time.Hour * 24 * 30).Unix(),

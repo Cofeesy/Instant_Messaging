@@ -84,11 +84,8 @@ func Register(c *gin.Context) {
 // @Tag 获取用户列表
 // @Success 200 {string} json{"code","data"}
 // @Router /user/getUserList [get]
-
-// TODO:登陆前后的角色是不同的，登陆后可以发一个token
 func Login(c *gin.Context) {
 	var user_login system.User_Login
-	// var user models.User_Basic
 	if err := c.ShouldBindJSON(&user_login); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -99,10 +96,15 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 登陆颁发,那这个东西是存到数据库吗？
-	token, err := utils.GenerateToken(user.Username, user.Password)
+	token, err := utils.GenerateToken(user.ID, user.Username)
+	if err!=nil{
+		response.FailWithMessage("生成Token失败", c)
+	}
 	println("token>>>>>>>>", token)
-	response.OkWithDetailed(user, "登陆成功", c)
+	response.OkWithDetailed(gin.H{
+        "user":  user,   
+        "token": token, 
+    }, "登陆成功", c)
 }
 
 // UpdateUser

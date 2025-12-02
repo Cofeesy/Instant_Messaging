@@ -53,19 +53,33 @@
 
                 //网络请求
                 //封装了promis
+                // util.post("/login", this.user).then(res => {
+                //     console.log(res)
+                //     if (res.code != 0) {
+                //         mui.toast(res.msg)
+                //     } else {
+                //         // 这里是跳转前端页面，但是是搭建websocket吗
+                //         var url = "/toChat/index.shtml?id=" + res.data.id
+                //             + "&token=" + res.data.token
+                //         userInfo(res.data)
+                //         userid(res.data.id)
+                //         // localStorage.setItem('userInfo', JSON.stringify(res.data))
+                //         location.href = url
+                //         //mui.alert(url)
+                //     }
+                // })
                 util.post("/login", this.user).then(res => {
                     console.log(res)
                     if (res.code != 0) {
                         mui.toast(res.msg)
                     } else {
-                        // 这里是跳转前端页面，但是是搭建websocket吗
-                        var url = "/toChat/index.shtml?id=" + res.data.id
-                            + "&token=" + res.data.token
-                        userInfo(res.data)
-                        userid(res.data.id)
-                        // localStorage.setItem('userInfo', JSON.stringify(res.data))
-                        location.href = url
-                        //mui.alert(url)
+                        sessionStorage.setItem("userid", res.data.user.ID);
+                        sessionStorage.setItem("token", res.data.token);
+                        sessionStorage.setItem("userinfo", JSON.stringify(res.data.user));
+
+                        location.href = "/toChat"; 
+                        
+                        mui.toast("登录成功，正在跳转...");
                     }
                 })
             },

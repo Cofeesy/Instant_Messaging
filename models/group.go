@@ -7,9 +7,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// TODO:用关系的话怎么标记群主呢？可以在关系中用一个字段标记IsGroupMaster
 type Group struct {
 	gorm.Model
+	// 群主ID
 	OwnerId uint `json:"ownerid"`
 	// 群号
 	GroupNumber int `json:"groupnumber"`

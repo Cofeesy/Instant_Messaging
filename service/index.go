@@ -6,7 +6,6 @@ import (
 	"gin_chat/models"
 	"github.com/gin-gonic/gin"
 	"html/template"
-	"strconv"
 )
 
 // Server-Side Rendering, SSR，后端渲染的项目，不是前后端分离的
@@ -60,11 +59,12 @@ func ToChat(c *gin.Context) {
 	}
 	// 获取信息
 	// TODO:改其他方式，比如session的地方获取
-	userId, _ := strconv.Atoi(c.Query("userId"))
-	token := c.Query("token")
-	user := models.User_Basic{}
-	user.ID = uint(userId)
-	user.LoginToken = token
+	// userId, _ := strconv.Atoi(c.Query("userId"))
+	// token := c.Query("token")
+	// user := models.User_Basic{}
+	// user.ID = uint(userId)
+	// user.LoginToken = token
+	user:=models.User_Basic{}
 	// fmt.Println("ToChat>>>>>>>>", user)
 	// 返回给前端的数据
 	t.Execute(c.Writer, user)

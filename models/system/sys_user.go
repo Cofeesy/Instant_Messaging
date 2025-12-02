@@ -1,8 +1,8 @@
 package system
 
-// import (
-// 	"gin_chat/models"
-// )
+import (
+	"github.com/google/uuid"
+)
 
 // 这个json要和前端一致
 type User_Register struct {
@@ -115,4 +115,12 @@ type AiRedisMsgPayload struct {
 	TargetId  uint  `json:"targetid"`
 	Start   int64 `json:"start"`
 	End     int64 `json:"end"`
+}
+
+type BaseClaims struct { // size=64 (0x40)
+    UUID        uuid.UUID
+    ID          uint
+    Username    string
+    // NickName    string
+    // AuthorityId uint
 }

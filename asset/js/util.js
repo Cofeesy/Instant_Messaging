@@ -123,6 +123,13 @@ Core.prototype.post=function(uri,data,fn){
 			// "application/x-www-form-urlencoded"
 			"application/json"
 		);
+
+		var token = sessionStorage.getItem("token");
+        if (token) {
+            // "Authorization" 是标准字段名，也可以用 "x-token" 或其他你后端定义的字段
+            xhr.setRequestHeader("x-token", token); 
+        }
+
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
                 resolve(JSON.parse(xhr.responseText));

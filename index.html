@@ -43,25 +43,17 @@
         },
         methods:{
             login:function(){
-                console.log("login")
 
-                //检测手机号是否正确
-                //检测密码是否为空
-
-                //网络请求
-                //封装了promis
                 util.post("/login",this.user).then(res=>{
-                    console.log(res)
-                    if(res.code!=0){
-                        mui.toast(res.message)
-                    }else{
-                        var url = "/toChat?userid="+res.data.ID+"&token="+res.data.Identity
-                        // 后续取消在url中携带信息
-                        // var url = "/toChat"
-                        userInfo(res.data)
-                        userid(res.data.ID)
-                        mui.toast("登录成功,即将跳转")
-                        location.href = url
+                    if (res.code == 0) {
+                        sessionStorage.setItem("token", res.data.token);
+                        
+                        sessionStorage.setItem("userinfo", JSON.stringify(res.data.user));
+                        
+                        sessionStorage.setItem("userid", res.data.user.ID);
+
+                        mui.toast("登录成功");
+                        location.href = "/toChat";
                     }
                 })
             },

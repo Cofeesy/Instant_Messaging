@@ -305,18 +305,12 @@ func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 	}
 }
 
-// 系统广播，比如维护信息
-// func SendMsgToAll(){
-
-// }
 
 // 读取start-end的redis数据，并返回给前端
 func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*Message, error) {
-	// 从redis里面查找
 
 	ctx := context.Background()
 
-	// 【修改】组装私聊消息的 key
 	key := " "
 	if singleRedisPayload.UserId < singleRedisPayload.TargetId {
 		key = fmt.Sprintf("chat:private:%d:%d", singleRedisPayload.UserId, singleRedisPayload.TargetId)
@@ -328,7 +322,6 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*Messa
 	// 假设总数为 total，则想要的区间为 [total-1-End, total-1-Start]
 	// 如果 End == -1，则返回全部（ZRange 0 -1）
 	var stringmsgs []string
-	// 先获取当前总数
 	total, err := utils.RDB.ZCard(ctx, key).Result()
 	if err != nil {
 		return nil, err
@@ -366,9 +359,7 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*Messa
 
 	msgs := make([]*Message, 0)
 	for _, v := range stringmsgs {
-		// 每一个string转为[]byte
 		stringmsg := []byte(v)
-		// 然后将其映射到Message上
 		var msg Message
 		json.Unmarshal(stringmsg, &msg)
 		msgs = append(msgs, &msg)
@@ -377,41 +368,32 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*Messa
 	return msgs, nil
 }
 
-// 【新增】从 Redis 读取群聊消息历史
 func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*Message, error) {
 	ctx := context.Background()
 
-	// 【修改】群组消息的 Redis key，使用统一的命名规范
 	key := fmt.Sprintf("chat:group:%d", groupRedis.GroupId)
 
-	// 从 Redis 有序集合中读取消息
-	// ZRange 是从低分数到高分数（正序）
 	var stringmsgs []string
-	// 先获取当前总数
 	total, err := utils.RDB.ZCard(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
 
 	if groupRedis.End == -1 {
-		// 返回所有消息（正序）
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		// 计算正序的 start/end
 		if total == 0 {
 			return []*Message{}, nil
 		}
-		// 计算索引
 		s := int64(total) - 1 - groupRedis.End
 		e := int64(total) - 1 - groupRedis.Start
 		if s < 0 {
 			s = 0
 		}
 		if e < 0 {
-			// 没有可返回的消息
 			return []*Message{}, nil
 		}
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
@@ -425,9 +407,7 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*Message, 
 
 	msgs := make([]*Message, 0)
 	for _, v := range stringmsgs {
-		// 每一个string转为[]byte
 		stringmsg := []byte(v)
-		// 然后将其映射到Message上
 		var msg Message
 		json.Unmarshal(stringmsg, &msg)
 		msgs = append(msgs, &msg)
@@ -474,7 +454,7 @@ func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
 	return
 }
 
-// TODO:和gemini聊天后端实现
+// gemini聊天后端实现
 // 目前仅支持text
 // 前端 ——WebSocket—— 后端（Go+Gin+WebSocket） —— 调 AI API（流式） —— 前端展示
 func ChatWithGemini(msg []byte) {
@@ -544,37 +524,29 @@ func ChatWithGemini(msg []byte) {
 func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*Message, error) {
 	ctx := context.Background()
 
-	// 【修改】群组消息的 Redis key，使用统一的命名规范
 	key := fmt.Sprintf("aichat:%d:%d", 0, AiRedisMsgPayload.UserId)
 
-	// 从 Redis 有序集合中读取消息
-	// ZRange 是从低分数到高分数（正序）
 	var stringmsgs []string
-	// 先获取当前总数
 	total, err := utils.RDB.ZCard(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
 
 	if AiRedisMsgPayload.End == -1 {
-		// 返回所有消息（正序）
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		// 计算正序的 start/end
 		if total == 0 {
 			return []*Message{}, nil
 		}
-		// 计算索引
 		s := int64(total) - 1 - AiRedisMsgPayload.End
 		e := int64(total) - 1 - AiRedisMsgPayload.Start
 		if s < 0 {
 			s = 0
 		}
 		if e < 0 {
-			// 没有可返回的消息
 			return []*Message{}, nil
 		}
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()

@@ -42,7 +42,6 @@ func (user *User_Basic) TableName() string {
 
 // hook
 func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
-	// fmt.Println("BeforeCreate hook is being called!") // 添加日志
 	u.UUID = uuid.New()
 	fmt.Print(u.UUID)
 	return
@@ -50,8 +49,6 @@ func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
 
 func GetUserList() ([]*User_Basic, error) {
 	data := make([]*User_Basic, 10)
-	// 记得这里是传地址
-	// gorm操作并不熟悉
 	if err := db.Find(&data).Error; err != nil {
 		return nil, err
 	}
@@ -61,16 +58,13 @@ func GetUserList() ([]*User_Basic, error) {
 	return data, nil
 }
 
-// 为什么需要这个,登陆的时候需要查找，或者其他的操作也可能需要查找
 func FindUserByName(name string) (*User_Basic, error) {
 	var user User_Basic
 	err := db.Where("username = ?", name).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 没找到用户
 			return nil, errors.New("用户不存在")
 		}
-		// 其他数据库错误
 		return nil, err
 	}
 	return &user, nil
@@ -81,25 +75,20 @@ func FindUserByID(id uint) (*User_Basic, error) {
 	err := db.Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 没找到用户
 			return nil, errors.New("用户不存在")
 		}
-		// 其他数据库错误
 		return nil, err
 	}
 	return &user, nil
 }
 
-// FIXME:这里应该有问题
 func FindUserByNameAndPassword(name, password string) (*User_Basic, error) {
 	var user User_Basic
 	err := db.Where("username = ?", name).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 没找到用户
 			return nil, errors.New("用户不存在")
 		}
-		// 其他数据库错误
 		return nil, err
 	}
 
@@ -109,14 +98,12 @@ func FindUserByNameAndPassword(name, password string) (*User_Basic, error) {
 	return &user, nil
 }
 
-// 创建这个用户
+// 创建用户
 func CreateUser(user_register *system.User_Register) error {
 	var user User_Basic
 	user.Username = user_register.Name
 	user.Password = user_register.Password
 	user.Salt = user_register.Salt
-	// fmt.Println(user.Username)
-	// fmt.Println(user.Password)
 	result := db.Create(&user)
 	return result.Error
 }
@@ -137,7 +124,6 @@ func UpdateUserInfo(updateuserinfo *system.UpdateUserInfo) error {
 	}
 	
 	result := db.Model(&user).Updates(map[string]interface{}{"UserName": updateuserinfo.Username, "Phone": updateuserinfo.Phone, "Email": updateuserinfo.Email, "Icon": updateuserinfo.Icon})
-	// 这个错误由db记录
 	return result.Error
 }
 
@@ -148,7 +134,6 @@ func UpdateUserPasswd(name, password string) error {
 	}
 	password = utils.EncryptMD5(password, user.Salt)
 	result := db.Model(&user).Updates(map[string]interface{}{"Password": password})
-	// 这个错误由db记录
 	return result.Error
 }
 
@@ -164,6 +149,5 @@ func DeleteUser(name string) error {
 		return err
 	}
 	result := db.Delete(&user)
-	// 这个错误由db记录
 	return result.Error
 }

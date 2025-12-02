@@ -7,7 +7,7 @@ type Hub struct{
 	UnRegister chan *Client
 	// 广播消息
 	BroadcastMessage []byte
-	// 映射
+	// 用户池
 	UserToClient map[uint]*Client
 }
 

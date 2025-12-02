@@ -55,19 +55,12 @@
         },
         methods: {
             register: function () {
-                //检测密码是否为空
-                console.log(this.user)
-                //网络请求
-                //封装了promis
-
-                // 这里走路由路线
                 util.post("/register", this.user).then(res => {
                     console.log(res)
                     if (res.code != 0) {
                         mui.toast(res.message)
                     } else {
-                        //location.replace("localhost:8081")
-                        location.href = "/index"
+                        location.href = "/toChat"
                         mui.toast("注册成功")
                     }
                 })

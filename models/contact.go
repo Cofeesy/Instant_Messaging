@@ -1,7 +1,6 @@
 package models
 
 import (
-	// "errors"
 	"errors"
 	"gin_chat/models/system"
 
@@ -51,8 +50,7 @@ func FindFriendsByUserID(ownerid uint) ([]*User_Basic, error) {
 	if err := db.Where("owner_id=? AND relation=?", ownerid, 1).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
-	println(contacts)
-	// 保存好友的id
+
 	searchid := make([]uint, 0)
 	for _, v := range contacts {
 		searchid = append(searchid, v.TargetId)
@@ -75,7 +73,6 @@ func FindFriendsByUserID(ownerid uint) ([]*User_Basic, error) {
 func AddFrend(addPayload *system.AddFriend) error {
 	// 这是一个事务操作
 	tx := db.Begin()
-	//
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -101,7 +98,6 @@ func AddFrend(addPayload *system.AddFriend) error {
 
 	// 查找是否存在关系
 	_, err = FindFrend(addPayload.UserId, friend.ID)
-	// 不等于nil说明已经找到
 	if err == nil {
 		return errors.New("已经添加过该好友")
 	}
