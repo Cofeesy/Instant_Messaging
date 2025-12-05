@@ -2,21 +2,20 @@ package utils
 
 import (
 	"fmt"
-	"gin_chat/utils/setting"
 	"github.com/redis/go-redis/v9"
 	"log"
 )
 
 var RDB *redis.Client
 
-func init() {
+func InitRedis() {
 	var (
 		err            error
 		addr, password string
 		dbNumber             int
 	)
 
-	sec, err := setting.Cfg.GetSection("redis")
+	sec, err := Cfg.GetSection("redis")
 	if err != nil {
 		log.Fatalf("Fail to get section 'redis': %v", err)
 	}

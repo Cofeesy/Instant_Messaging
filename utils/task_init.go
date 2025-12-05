@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"gin_chat/utils/setting"
 	"time"
 )
 
@@ -10,7 +9,7 @@ import (
 // DelayHeartbeat = 3 
 // HeartbeatHz = 30
 func InitTimer(f TimerFunc) {
-	Timer(time.Duration(setting.DelayHeartbeat)*time.Second, time.Duration(setting.HeartbeatHz)*time.Second, f, "")
+	Timer(time.Duration(DelayHeartbeat)*time.Second, time.Duration(HeartbeatHz)*time.Second, f, "")
 }
 
 type TimerFunc func(interface{}) bool
@@ -37,15 +36,5 @@ func Timer(delay, tick time.Duration, fun TimerFunc, param interface{}) {
 				return
 			}
 		}
-
-		// for {
-		// 	select {
-		// 	case <-t.C:
-		// 		if fun(param) == false {
-		// 			return
-		// 		}
-		// 		t.Reset(tick)
-		// 	}
-		// }
 	}()
 }

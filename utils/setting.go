@@ -1,4 +1,4 @@
-package setting
+package utils
 
 import (
 	"github.com/go-ini/ini"
@@ -33,6 +33,9 @@ func init() {
 	LoadAPP()
 	LoadServer()
 	LoadTimer()
+	InitMysql()
+	InitRedis()
+	// InitTimer(service.CleanConnection)
 }
 
 func LoadAPP() {

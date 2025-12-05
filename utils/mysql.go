@@ -1,26 +1,24 @@
-package models
+package utils
 
 import (
 	"fmt"
-	"gin_chat/utils/setting"
 	"log"
-
 	"gorm.io/driver/mysql" // 导入 GORM V2 的 MySQL 驱动
 	"gorm.io/gorm"         // 导入 GORM V2 核心包
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 )
 
-var db *gorm.DB
+var DB *gorm.DB
 
-func init() {
+func InitMysql() {
 
 	var (
 		err                                error
 		dbName, user, password, host, port string
 	)
 
-	sec, err := setting.Cfg.GetSection("mysql")
+	sec, err := Cfg.GetSection("mysql")
 	if err != nil {
 		log.Fatalf("Fail to get section 'mysql': %v", err)
 	}
@@ -71,7 +69,7 @@ func init() {
 		dbName)
 
 	// --- 这是 V2 初始化方式的核心变化 ---
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		// 配置 GORM 日志
 		Logger: logger.Default.LogMode(logger.Info), // 设置日志级别为 Info，相当于 V1 的 LogMode(true)
 		// 配置命名策略
@@ -85,7 +83,7 @@ func init() {
 	}
 
 	// --- 连接池设置的变化 ---
-	sqlDB, err := db.DB() // 获取底层的 *sql.DB 对象
+	sqlDB, err := DB.DB() // 获取底层的 *sql.DB 对象
 	if err != nil {
 		log.Fatalf("Failed to get underlying sql.DB: %v", err)
 	}
@@ -96,6 +94,6 @@ func init() {
 }
 
 func CloseDB() {
-	sqlDB, _ := db.DB()
+	sqlDB, _ := DB.DB()
 	defer sqlDB.Close()
 }

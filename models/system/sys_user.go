@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// 这个json要和前端一致
 type User_Register struct {
 	Name       string `json:"username" gorm:"unique;not null" validate:"required"`
 	Password   string `json:"password" validate:"required,min=2,max=20"`
@@ -19,9 +18,7 @@ type User_Login struct {
 }
 
 type UpdateUserInfo struct {
-	// 该id是更新用户信息的用户id
 	ID 		 uint   `json:"userid"`
-	// 以下信息是该用户需要更新的信息
 	Username string `json:"username" gorm:"unique;not null" validate:"required"`
 	Phone    string `json:"phone" validate:"omitempty,len=11"`
 	Email    string `json:"email" validate:"omitempty,email"`
@@ -45,16 +42,12 @@ type LoadFriendsPayload struct {
 }
 
 type AddFriend struct {
-	// 自己的id
 	UserId uint `json:"userid"`
-	// 要添加的好友的名字
 	FriendName string `json:"friendname"`
 }
 
 type FindFriend struct {
-	// 自己的id
 	UserId uint `json:"userid"`
-	// 好友的id
 	FriendId uint `json:"friendid"`
 }
 
@@ -62,12 +55,8 @@ type CreatGroup struct {
 	OwnerId   uint   `json:"ownerid"`
 	GroupName string `json:"name"`
 	Icon      string `json:"icon"`
-	// 群描述
 	Memo string `json:"memo"`
 }
-
-// type FindGroup struct {
-// }
 
 type LoadGroups struct {
 	UserId uint `json:"userid"`
@@ -78,23 +67,17 @@ type AddGroup struct {
 	GroupName string `json:"groupname"`
 }
 
-// type ChatPayload struct {
-// 	UserId    uint   `json:"userid"`
-// 	Token string `json:"token"`
-// }
-
 type AuthData struct {
 	UserId uint   `json:"userid"`
 	Token  string `json:"token"`
 }
 
 type AuthMessage struct {
-	// 用来验证token
 	Cmd int `json:"cmd"`
-	// AuthData
 	UserId uint   `json:"userid"`
 	Token  string `json:"token"`
 }
+
 type SingleRedisPayload struct {
 	UserId    uint  `json:"userid"`
 	TargetId  uint  `json:"targetid"`
@@ -102,7 +85,6 @@ type SingleRedisPayload struct {
 	End       int64 `json:"end"`
 	IsReverse bool  `json:"isreverse"`
 }
-
 
 type GroupRedisPayload struct {
 	GroupId uint  `json:"groupId"`
@@ -117,10 +99,8 @@ type AiRedisMsgPayload struct {
 	End     int64 `json:"end"`
 }
 
-type BaseClaims struct { // size=64 (0x40)
+type BaseClaims struct { 
     UUID        uuid.UUID
     ID          uint
     Username    string
-    // NickName    string
-    // AuthorityId uint
 }

@@ -3,10 +3,7 @@ package utils
 import (
 	"github.com/dgrijalva/jwt-go"
 	"time"
-	"gin_chat/utils/setting"
 )
-
-var JwtSecret = []byte(setting.JwtSecret)
 
 // 自定义的
 type Claims struct {
@@ -14,7 +11,6 @@ type Claims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
-
 
 // 生成token
 func GenerateToken(id uint,username string)(string, error){
@@ -34,7 +30,7 @@ func GenerateToken(id uint,username string)(string, error){
 	tokenClaims:=jwt.NewWithClaims(jwt.SigningMethodHS256,Claims)
 
 	// 使用密钥签名
-	token, err := tokenClaims.SignedString(JwtSecret)
+	token, err := tokenClaims.SignedString([]byte(JwtSecret))
 	if err != nil {
 		return "", err
 	}

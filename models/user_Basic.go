@@ -1,10 +1,7 @@
 package models
 
 import (
-	"errors"
 	"fmt"
-	"gin_chat/models/system"
-	"gin_chat/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,109 +42,4 @@ func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
 	u.UUID = uuid.New()
 	fmt.Print(u.UUID)
 	return
-}
-
-func GetUserList() ([]*User_Basic, error) {
-	data := make([]*User_Basic, 10)
-	if err := db.Find(&data).Error; err != nil {
-		return nil, err
-	}
-	for _, v := range data {
-		fmt.Println(v)
-	}
-	return data, nil
-}
-
-func FindUserByName(name string) (*User_Basic, error) {
-	var user User_Basic
-	err := db.Where("username = ?", name).First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("用户不存在")
-		}
-		return nil, err
-	}
-	return &user, nil
-}
-
-func FindUserByID(id uint) (*User_Basic, error) {
-	var user User_Basic
-	err := db.Where("id = ?", id).First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("用户不存在")
-		}
-		return nil, err
-	}
-	return &user, nil
-}
-
-func FindUserByNameAndPassword(name, password string) (*User_Basic, error) {
-	var user User_Basic
-	err := db.Where("username = ?", name).First(&user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("用户不存在")
-		}
-		return nil, err
-	}
-
-	if !utils.DecryptMD5(user.Salt, user.Password, password) {
-		return nil, errors.New("密码输入错误")
-	}
-	return &user, nil
-}
-
-// 创建用户
-func CreateUser(user_register *system.User_Register) error {
-	var user User_Basic
-	user.Username = user_register.Name
-	user.Password = user_register.Password
-	user.Salt = user_register.Salt
-	result := db.Create(&user)
-	return result.Error
-}
-
-// 更新用户信息名字和电话，邮箱
-func UpdateUserInfo(updateuserinfo *system.UpdateUserInfo) error {
-	var user User_Basic
-	// 检查用户名是否已经被使用
-	r := db.Where("username = ?", updateuserinfo.Username).First(&user).RowsAffected
-	if r > 0 {
-		return errors.New("该用户名已被使用")
-	}
-
-	// 根据id查找user
-	err := db.Where("id = ?", updateuserinfo.ID).First(&user).Error
-	if err != nil {
-		return err
-	}
-	
-	result := db.Model(&user).Updates(map[string]interface{}{"UserName": updateuserinfo.Username, "Phone": updateuserinfo.Phone, "Email": updateuserinfo.Email, "Icon": updateuserinfo.Icon})
-	return result.Error
-}
-
-func UpdateUserPasswd(name, password string) error {
-	var user User_Basic
-	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
-		return err
-	}
-	password = utils.EncryptMD5(password, user.Salt)
-	result := db.Model(&user).Updates(map[string]interface{}{"Password": password})
-	return result.Error
-}
-
-// 删除用户
-// 目前的逻辑是逻辑删除，也就是加上一个删除时间，但数据仍在数据库存在
-// 是否是逻辑删除（Soft Delete），取决于 模型 User_Basic 是否包含了 GORM 的软删除字段。
-// 即默认的gorm.Model包含DeletedAt字段
-// 如果想要实际的物理删除
-// 可以使用 Unscoped 方法，例如：db.Unscoped().Delete(&user)
-func DeleteUser(name string) error {
-	var user User_Basic
-	if err := db.Where("username = ?", name).First(&user).Error; err != nil {
-		return err
-	}
-	result := db.Delete(&user)
-	return result.Error
 }
