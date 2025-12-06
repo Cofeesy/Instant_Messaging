@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+	utils.InitializeSystem() 
+	utils.InitTimer(service.CleanConnection) 
+
 	r := router.InitRouter()
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", utils.HTTPPort),
@@ -17,9 +20,6 @@ func main() {
 		WriteTimeout:   utils.WriteTimeout,
 		MaxHeaderBytes: 1 << 20,
 	}
-
-	// 定时器
-	utils.InitTimer(service.CleanConnection) 
 	
 	s.ListenAndServe()
 }

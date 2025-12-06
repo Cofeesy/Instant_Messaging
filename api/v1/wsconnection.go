@@ -2,7 +2,7 @@ package v1
 
 import (
 	"encoding/json"
-	"gin_chat/models/system"
+	"gin_chat/model/request"
 	"gin_chat/service"
 	"net/http"
 	"github.com/gin-gonic/gin"
@@ -10,7 +10,7 @@ import (
 )
 
 func WsHandler(c *gin.Context) {
-	var authPayload system.AuthMessage
+	var authPayload request.AuthMessage
 
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  512,

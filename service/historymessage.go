@@ -4,13 +4,13 @@ import(
 	"context"
 	"encoding/json"
 	"fmt"
-	"gin_chat/models"
-	"gin_chat/models/system"
+	"gin_chat/model"
+	"gin_chat/model/request"
 	"gin_chat/utils"
 )
 
 // 读取start-end的redis数据，并返回给前端
-func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*models.Message, error) {
+func GetSingleHistoryMsg(singleRedisPayload request.SingleRedisPayload) ([]*model.Message, error) {
 	ctx := context.Background()
 
 	key := " "
@@ -39,7 +39,7 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*model
 	} else {
 		// 计算正序的 start/end
 		if total == 0 {
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		// 计算索引
 		s := int64(total) - 1 - singleRedisPayload.End
@@ -49,7 +49,7 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*model
 		}
 		if e < 0 {
 			// 没有可返回的消息
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
 		if err != nil {
@@ -60,10 +60,10 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*model
 		return nil, err
 	}
 
-	msgs := make([]*models.Message, 0)
+	msgs := make([]*model.Message, 0)
 	for _, v := range stringmsgs {
 		stringmsg := []byte(v)
-		var msg models.Message
+		var msg model.Message
 		json.Unmarshal(stringmsg, &msg)
 		msgs = append(msgs, &msg)
 	}
@@ -71,7 +71,7 @@ func GetSingleHistoryMsg(singleRedisPayload system.SingleRedisPayload) ([]*model
 	return msgs, nil
 }
 
-func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*models.Message, error) {
+func GetGroupHistoryMessages(groupRedis *request.GroupRedisPayload) ([]*model.Message, error) {
 	ctx := context.Background()
 
 	key := fmt.Sprintf("chat:group:%d", groupRedis.GroupId)
@@ -89,7 +89,7 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*models.Me
 		}
 	} else {
 		if total == 0 {
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		s := int64(total) - 1 - groupRedis.End
 		e := int64(total) - 1 - groupRedis.Start
@@ -97,7 +97,7 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*models.Me
 			s = 0
 		}
 		if e < 0 {
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
 		if err != nil {
@@ -108,10 +108,10 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*models.Me
 		return nil, err
 	}
 
-	msgs := make([]*models.Message, 0)
+	msgs := make([]*model.Message, 0)
 	for _, v := range stringmsgs {
 		stringmsg := []byte(v)
-		var msg models.Message
+		var msg model.Message
 		json.Unmarshal(stringmsg, &msg)
 		msgs = append(msgs, &msg)
 	}
@@ -119,7 +119,7 @@ func GetGroupHistoryMessages(groupRedis *system.GroupRedisPayload) ([]*models.Me
 	return msgs, nil
 }
 
-func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*models.Message, error) {
+func GetAiHistoryMessages(AiRedisMsgPayload *request.AiRedisMsgPayload) ([]*model.Message, error) {
 	ctx := context.Background()
 
 	key := fmt.Sprintf("aichat:%d:%d", 0, AiRedisMsgPayload.UserId)
@@ -137,7 +137,7 @@ func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*model
 		}
 	} else {
 		if total == 0 {
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		s := int64(total) - 1 - AiRedisMsgPayload.End
 		e := int64(total) - 1 - AiRedisMsgPayload.Start
@@ -145,7 +145,7 @@ func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*model
 			s = 0
 		}
 		if e < 0 {
-			return []*models.Message{}, nil
+			return []*model.Message{}, nil
 		}
 		stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
 		if err != nil {
@@ -156,9 +156,9 @@ func GetAiHistoryMessages(AiRedisMsgPayload *system.AiRedisMsgPayload) ([]*model
 		return nil, err
 	}
 
-	msgs := make([]*models.Message, 0)
+	msgs := make([]*model.Message, 0)
 	for _, v := range stringmsgs {
-		var msg models.Message
+		var msg model.Message
 		err := json.Unmarshal([]byte(v), &msg)
 		if err != nil {
 			fmt.Println("解析消息失败:", err)

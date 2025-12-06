@@ -1,14 +1,16 @@
 package v1
 
 import (
-	"gin_chat/common/response"
-	"gin_chat/models/system"
+	"gin_chat/model/response"
+	"gin_chat/model/request"
 	"gin_chat/service"
+
+	// "github.com/aws/aws-sdk-go/aws/request"
 	"github.com/gin-gonic/gin"
 )
 
 func GetSingleMessagesFromRedis(c *gin.Context) {
-	var redisPayload system.SingleRedisPayload
+	var redisPayload request.SingleRedisPayload
 	err := c.ShouldBindJSON(&redisPayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -34,7 +36,7 @@ func GetSingleMessagesFromRedis(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /message/getGroupMessagesFromRedis [post]
 func GetGroupMessagesFromRedis(c *gin.Context) {
-	var groupRedis system.GroupRedisPayload
+	var groupRedis request.GroupRedisPayload
 
 	if err := c.ShouldBindJSON(&groupRedis); err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -61,7 +63,7 @@ func GetGroupMessagesFromRedis(c *gin.Context) {
 
 // ai聊天历史记录
 func GetAiMessagesFromRedis(c *gin.Context) {
-	var aiRedis system.AiRedisMsgPayload
+	var aiRedis request.AiRedisMsgPayload
 
 	if err := c.ShouldBindJSON(&aiRedis); err != nil {
 		response.FailWithMessage(err.Error(), c)

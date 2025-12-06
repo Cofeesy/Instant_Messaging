@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"gin_chat/common/response"
-	"gin_chat/models/system"
+	"gin_chat/model/response"
+	"gin_chat/model/request"
 	"gin_chat/service"
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +11,7 @@ import (
 func CreateGroup(c *gin.Context) {
 	// owner, err := strconv.Atoi(c.Query("ownerid"))
 	// groupName := c.Query("groupname")
-	var creategroup system.CreatGroup
+	var creategroup request.CreatGroup
 	err := c.ShouldBindJSON(&creategroup)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -30,7 +30,7 @@ func CreateGroup(c *gin.Context) {
 
 // 返回群列表
 func LoadGroups(c *gin.Context) {
-	var loadgroups system.LoadGroups
+	var loadgroups request.LoadGroups
 	err := c.ShouldBindJSON(&loadgroups)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -52,7 +52,7 @@ func LoadGroups(c *gin.Context) {
 
 // 加入群组
 func AddGroup(c *gin.Context) {
-	var addGroup system.AddGroup
+	var addGroup request.AddGroup
 	err := c.ShouldBindJSON(&addGroup)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)

@@ -12,7 +12,6 @@ import (
 var DB *gorm.DB
 
 func InitMysql() {
-
 	var (
 		err                                error
 		dbName, user, password, host, port string

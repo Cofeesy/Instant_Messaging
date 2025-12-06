@@ -3,7 +3,7 @@ package common
 import (
 	"github.com/gin-gonic/gin"
 	"gin_chat/utils"
-	"gin_chat/common/response"
+	"gin_chat/model/response"
 	"time"
 )
 

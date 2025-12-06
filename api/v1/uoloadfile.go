@@ -2,7 +2,7 @@ package v1
 
 import (
 	"fmt"
-	"gin_chat/common/response"
+	"gin_chat/model/response"
 	"math/rand"
 	"strings"
 	"time"

@@ -1,14 +1,10 @@
 package router
 
 import (
-	// "gin_chat/common"
 	"gin_chat/utils"
 	"gin_chat/api/v1"
-
 	"gin_chat/docs"
-
 	"github.com/gin-gonic/gin"
-
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

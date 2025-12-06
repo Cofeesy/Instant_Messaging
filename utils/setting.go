@@ -4,6 +4,7 @@ import (
 	"github.com/go-ini/ini"
 	"log"
 	"time"
+	// "gin_chat/service"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 	RedisOnlineTime  uint64
 )
 
-func init() {
+func InitializeSystem() {
 	var err error
 	Cfg, err = ini.Load("conf/app.ini")
 	if err != nil {
@@ -35,6 +36,7 @@ func init() {
 	LoadTimer()
 	InitMysql()
 	InitRedis()
+	// InitTimer(service.CleanConnection) 
 	// InitTimer(service.CleanConnection)
 }
 

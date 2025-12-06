@@ -1,15 +1,15 @@
 package v1
 
 import (
-	"gin_chat/common/response"
-	"gin_chat/models"
-	"gin_chat/service"
-	"github.com/gin-gonic/gin"
-	"html/template"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"gin_chat/models/system"
+	"gin_chat/model"
+	"gin_chat/model/response"
+	"gin_chat/model/request"
+	"gin_chat/service"
 	"gin_chat/utils"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"html/template"
 	"math/rand"
 )
 
@@ -69,15 +69,14 @@ func ToChat(c *gin.Context) {
 	// user := models.User_Basic{}
 	// user.ID = uint(userId)
 	// user.LoginToken = token
-	user:=models.User_Basic{}
+	user := model.User_Basic{}
 	// fmt.Println("ToChat>>>>>>>>", user)
 	// 返回给前端的数据
 	t.Execute(c.Writer, user)
 }
 
-
 func Register(c *gin.Context) {
-	var user_register system.User_Register
+	var user_register request.User_Register
 	if err := c.ShouldBindJSON(&user_register); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -123,7 +122,7 @@ func Register(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /user/getUserList [get]
 func Login(c *gin.Context) {
-	var user_login system.User_Login
+	var user_login request.User_Login
 	if err := c.ShouldBindJSON(&user_login); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -135,13 +134,13 @@ func Login(c *gin.Context) {
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Username)
-	if err!=nil{
+	if err != nil {
 		response.FailWithMessage("生成Token失败", c)
 		return
 	}
 	println("token>>>>>>>>", token)
 	response.OkWithDetailed(gin.H{
-        "user":  user,   
-        "token": token, 
-    }, "登陆成功", c)
+		"user":  user,
+		"token": token,
+	}, "登陆成功", c)
 }

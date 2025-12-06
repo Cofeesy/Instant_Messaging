@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gin_chat/models"
+	"gin_chat/model"
 	"gin_chat/utils"
 	"time"
 	"github.com/redis/go-redis/v9"
@@ -12,7 +12,7 @@ import (
 )
 
 func dispatchMsg(msg []byte,client *Client) {
-	var Msg models.Message
+	var Msg model.Message
 	json.Unmarshal(msg, &Msg)
 
 	// 确保消息的发送者ID等于当前连接的客户端ID
@@ -38,7 +38,7 @@ func dispatchMsg(msg []byte,client *Client) {
 		}
 	// 群聊
 	case 2:
-		var contacts []models.Contact = make([]models.Contact, 0)
+		var contacts []model.Contact = make([]model.Contact, 0)
 		var IDs []uint = make([]uint, 0)
 		utils.DB.Where("target_id=? AND relation=?", Msg.TargetId, 2).Find(&contacts)
 
@@ -171,7 +171,7 @@ func ChatWithGemini(msg []byte) {
 		fmt.Println(err)
 	}
 
-	var Msg models.Message
+	var Msg model.Message
 	json.Unmarshal(msg, &Msg)
 	stream := aiClient.Models.GenerateContentStream(
 		ctx,

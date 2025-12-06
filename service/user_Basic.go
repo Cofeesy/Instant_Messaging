@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
-	"gin_chat/models"
-	"gin_chat/models/system"
+	"gin_chat/model"
+	"gin_chat/model/request"
 	"gin_chat/utils"
 	"gorm.io/gorm"
 )
@@ -15,8 +15,8 @@ import (
 // 因此这里使用*time.Time指针类型
 
 
-func GetUserList() ([]*models.User_Basic, error) {
-	data := make([]*models.User_Basic, 10)
+func GetUserList() ([]*model.User_Basic, error) {
+	data := make([]*model.User_Basic, 10)
 	if err := utils.DB.Find(&data).Error; err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func GetUserList() ([]*models.User_Basic, error) {
 	return data, nil
 }
 
-func FindUserByName(name string) (*models.User_Basic, error) {
-	var user models.User_Basic
+func FindUserByName(name string) (*model.User_Basic, error) {
+	var user model.User_Basic
 	err := utils.DB.Where("username = ?", name).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -38,8 +38,8 @@ func FindUserByName(name string) (*models.User_Basic, error) {
 	return &user, nil
 }
 
-func FindUserByID(id uint) (*models.User_Basic, error) {
-	var user models.User_Basic
+func FindUserByID(id uint) (*model.User_Basic, error) {
+	var user model.User_Basic
 	err := utils.DB.Where("id = ?", id).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -50,8 +50,8 @@ func FindUserByID(id uint) (*models.User_Basic, error) {
 	return &user, nil
 }
 
-func FindUserByNameAndPassword(name, password string) (*models.User_Basic, error) {
-	var user models.User_Basic
+func FindUserByNameAndPassword(name, password string) (*model.User_Basic, error) {
+	var user model.User_Basic
 	err := utils.DB.Where("username = ?", name).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -67,8 +67,8 @@ func FindUserByNameAndPassword(name, password string) (*models.User_Basic, error
 }
 
 // 创建用户
-func CreateUser(user_register *system.User_Register) error {
-	var user models.User_Basic
+func CreateUser(user_register *request.User_Register) error {
+	var user model.User_Basic
 	user.Username = user_register.Name
 	user.Password = user_register.Password
 	user.Salt = user_register.Salt
@@ -77,8 +77,8 @@ func CreateUser(user_register *system.User_Register) error {
 }
 
 // 更新用户信息名字和电话，邮箱
-func UpdateUserInfo(updateuserinfo *system.UpdateUserInfo) error {
-	var user models.User_Basic
+func UpdateUserInfo(updateuserinfo *request.UpdateUserInfo) error {
+	var user model.User_Basic
 	// 检查用户名是否已经被使用
 	r := utils.DB.Where("username = ?", updateuserinfo.Username).First(&user).RowsAffected
 	if r > 0 {
@@ -96,7 +96,7 @@ func UpdateUserInfo(updateuserinfo *system.UpdateUserInfo) error {
 }
 
 func UpdateUserPasswd(name, password string) error {
-	var user models.User_Basic
+	var user model.User_Basic
 	if err := utils.DB.Where("username = ?", name).First(&user).Error; err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func UpdateUserPasswd(name, password string) error {
 // 如果想要实际的物理删除
 // 可以使用 Unscoped 方法，例如：utils.DB.Unscoped().Delete(&user)
 func DeleteUser(name string) error {
-	var user models.User_Basic
+	var user model.User_Basic
 	if err := utils.DB.Where("username = ?", name).First(&user).Error; err != nil {
 		return err
 	}

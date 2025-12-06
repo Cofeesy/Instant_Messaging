@@ -2,9 +2,9 @@
 package v1
 
 import (
-	"gin_chat/common/response"
-	"gin_chat/models"
-	"gin_chat/models/system"
+	"gin_chat/model/response"
+	"gin_chat/model"
+	"gin_chat/model/request"
 	"gin_chat/service"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -32,7 +32,7 @@ func GetUserList(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /user/updateUser [put]
 func UpdateUserInfo(c *gin.Context) {
-	var updateuserinfo system.UpdateUserInfo
+	var updateuserinfo request.UpdateUserInfo
 	if err := c.ShouldBindJSON(&updateuserinfo); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -66,7 +66,7 @@ func UpdateUserInfo(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router //user/deleteUser [delete]
 func DeleteUser(c *gin.Context) {
-	var user models.User_Basic
+	var user model.User_Basic
 	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -89,7 +89,7 @@ func DeleteUser(c *gin.Context) {
 
 // 查找某个用户
 func Finduser(c *gin.Context) {
-	var user system.FindUser
+	var user request.FindUser
 	if err := c.ShouldBindJSON(&user); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
@@ -105,7 +105,7 @@ func Finduser(c *gin.Context) {
 
 // 查找用户所有好友
 func LoadFriends(c *gin.Context) {
-	var friendpayload system.LoadFriendsPayload
+	var friendpayload request.LoadFriendsPayload
 	// userid, err := strconv.Atoi(c.Query("userid"))
 	err := c.ShouldBindJSON(&friendpayload)
 	if err != nil {
@@ -128,7 +128,7 @@ func LoadFriends(c *gin.Context) {
 
 // 用户添加好友
 func AddFriend(c *gin.Context) {
-	var addfriend system.AddFriend
+	var addfriend request.AddFriend
 
 	err := c.ShouldBindJSON(&addfriend)
 	if err != nil {
@@ -145,7 +145,7 @@ func AddFriend(c *gin.Context) {
 }
 
 func FindFriend(c *gin.Context) {
-	var findFriend system.FindFriend
+	var findFriend request.FindFriend
 	err := c.ShouldBindJSON(&findFriend)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)

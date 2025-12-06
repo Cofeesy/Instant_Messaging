@@ -2,16 +2,16 @@ package service
 
 import (
 	"errors"
-	"gin_chat/models/system"
-	"gin_chat/models"
+	"gin_chat/model/request"
+	"gin_chat/model"
 	"gorm.io/gorm"
 	"gin_chat/utils"
 )
 
 // TODO:
 // 返回指定的好友信息
-func FindFrend(ownerid, targetid uint) (*models.Contact, error) {
-	var contact models.Contact
+func FindFrend(ownerid, targetid uint) (*model.Contact, error) {
+	var contact model.Contact
 	// TODO:先查找关系
 
 	// TODO:再返回具体好友
@@ -28,8 +28,8 @@ func FindFrend(ownerid, targetid uint) (*models.Contact, error) {
 
 // 返回所有的好友信息
 // 问题1：这个函数查找了两张表，gorm是怎么推断表的呢？我没有指定呢
-func FindFriendsByUserID(ownerid uint) ([]*models.User_Basic, error) {
-	contacts := make([]*models.Contact, 0)
+func FindFriendsByUserID(ownerid uint) ([]*model.User_Basic, error) {
+	contacts := make([]*model.Contact, 0)
 	// 查找所有好友的关系表
 	if err := utils.DB.Where("owner_id=? AND relation=?", ownerid, 1).Find(&contacts).Error; err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func FindFriendsByUserID(ownerid uint) ([]*models.User_Basic, error) {
 	}
 
 	// 通过id查找user
-	users := make([]*models.User_Basic, 0)
+	users := make([]*model.User_Basic, 0)
 	if err := utils.DB.Where("id IN ?", searchid).Find(&users).Error; err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func FindFriendsByUserID(ownerid uint) ([]*models.User_Basic, error) {
 }
 
 // 添加好友
-func AddFrend(addPayload *system.AddFriend) error {
+func AddFrend(addPayload *request.AddFriend) error {
 	// 这是一个事务操作
 	tx := utils.DB.Begin()
 	defer func() {
@@ -74,7 +74,7 @@ func AddFrend(addPayload *system.AddFriend) error {
 	// }
 
 	// 查找是否存在该用户
-	var friend *models.User_Basic
+	var friend *model.User_Basic
 	friend, err := FindUserByName(addPayload.FriendName)
 	if err != nil {
 		return errors.New("不存在该用户")
@@ -87,7 +87,7 @@ func AddFrend(addPayload *system.AddFriend) error {
 	}
 
 	// 双向创建关系1
-	contact1 := models.Contact{
+	contact1 := model.Contact{
 		OwnerId:  addPayload.UserId,
 		TargetId: friend.ID,
 		Relation: 1,
@@ -98,7 +98,7 @@ func AddFrend(addPayload *system.AddFriend) error {
 	}
 
 	// 双向创建关系2
-	contact2 := models.Contact{
+	contact2 := model.Contact{
 		OwnerId:  friend.ID,
 		TargetId: addPayload.UserId,
 		Relation: 1,
