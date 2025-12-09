@@ -22,15 +22,16 @@ type User_Basic struct {
 	Phone         string     `json:"phone" validate:"omitempty,len=11"`
 	Email         string     `json:"email" validate:"omitempty,email"`
 	Icon          string     `json:"icon"` //头像
-	ClientIP      string     `json:"client_ip"`
-	ClientPort    string     `json:"client_port"`
 	Salt          string     `json:"salt"`
-	LoginInTime   *time.Time `json:"login_in_time"`
 	HeartbeatTime *time.Time `json:"heartbeat_time"`
-	LoginOutTime  *time.Time `json:"login_out_time"`
-	IsLoginOut    bool       `json:"is_login_out"`
-	DeviceInfo    string     `json:"device_info"`
-	LoginToken    string     `json:"token"`
+	// 待扩展字段
+	// ClientIP      string     `json:"client_ip"`
+	// ClientPort    string     `json:"client_port"`
+	// LoginInTime   *time.Time `json:"login_in_time"`
+	// LoginOutTime  *time.Time `json:"login_out_time"`
+	// IsLoginOut    bool       `json:"is_login_out"`
+	// DeviceInfo    string     `json:"device_info"`
+	// LoginToken    string     `json:"token"`
 }
 
 func (user *User_Basic) TableName() string {
@@ -38,6 +39,7 @@ func (user *User_Basic) TableName() string {
 }
 
 // hook
+// 生成用户前返回用户的唯一uuid
 func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
 	u.UUID = uuid.New()
 	fmt.Print(u.UUID)

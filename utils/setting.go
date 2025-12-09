@@ -37,7 +37,6 @@ func InitializeSystem() {
 	InitMysql()
 	InitRedis()
 	// InitTimer(service.CleanConnection) 
-	// InitTimer(service.CleanConnection)
 }
 
 func LoadAPP() {
