@@ -94,17 +94,17 @@ type SingleHistoryMsgReq struct {
 	Limit    int   `json:"limit"` // 比如 20
 }
 
-type GroupRedisPayload struct {
+type GroupHistoryMsgReq struct {
 	GroupId uint  `json:"groupId"`
-	Start   int64 `json:"start"`
-	End     int64 `json:"end"`
+	Cursor   int64 `json:"cursor"` 
+	Limit    int   `json:"limit"` 
 }
 
-type AiRedisMsgPayload struct {
+type AiHistoryMsgReq struct {
 	UserId  uint  `json:"userid"`
 	TargetId  uint  `json:"targetid"`
-	Start   int64 `json:"start"`
-	End     int64 `json:"end"`
+	Cursor   int64 `json:"cursor"` 
+	Limit    int   `json:"limit"` // 比如 20
 }
 
 type BaseClaims struct { 

@@ -140,7 +140,7 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 	if ok && recieve_client != nil {
 		// 防止写入阻塞导致协程泄露
 		select {
-		case recieve_client.SendDataQueue <- msg:
+		case recieve_client.SendDataQueue <- newMsgBytes:
 			fmt.Println("【INFO】消息已实时推送给用户", targetId)
 		default:
 			fmt.Println("【WARNING】用户", targetId, "的发送队列已满，消息仅存储在Redis")
@@ -153,27 +153,52 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 
 // 群聊
 func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
-	if len(ids) == 0 {
+	var mysqlMsg model.Message
+	err := json.Unmarshal(msg, &mysqlMsg)
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
-	// 群聊: chat:group:{groupId}
+	// 使用服务器的时间
+	nowMilli := uint64(time.Now().UnixMilli())
+	mysqlMsg.CreateTime = nowMilli
+	// 存mysql
+	if err := utils.DB.Create(&mysqlMsg).Error; err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	// 更新时间后的msg，redis数据需和mysql保持一致
+	newMsgBytes, err := json.Marshal(mysqlMsg)
+	if err != nil {
+		fmt.Println("序列化失败:", err.Error())
+		return
+	}
+
+	// 存redis
 	ctx := context.Background()
+	// 私聊: chat:private:{小ID}:{大ID}
 	key := fmt.Sprintf("chat:group:%d", groupId)
 
-	score, err := utils.RDB.ZCard(ctx, key).Result()
+	// 使用管道优化：一次发送多条命令给 Redis，让 Redis 连续执行后再一次性返回结果。
+	// 不是原子操作，只是减少网络rtt
+	pipe := utils.RDB.Pipeline()
+	// 时间戳作为score
+	score := float64(mysqlMsg.CreateTime) 
+	pipe.ZAdd(ctx, key, redis.Z{
+		Score:  score,
+		Member: newMsgBytes,
+	})
+
+	// 设置过期时间
+	pipe.Expire(ctx, key, 7*24*time.Hour)
+	pipe.ZRemRangeByRank(ctx, key, 0, -501)
+
+	_, err = pipe.Exec(ctx)
 	if err != nil {
-		fmt.Println("获取群聊消息数量失败:", err)
+		fmt.Println("【ERROR】Redis 写入失败:", err)
 	}
-
-	if score == 0 {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: 0, Member: msg})
-	} else {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
-	}
-
-	// 【新增】设置消息过期时间（7天）
-	// utils.RDB.Expire(ctx, key, 7*24*time.Hour)
 
 	for _, v := range ids {
 		mu.RLock()
@@ -181,7 +206,7 @@ func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 		mu.RUnlock()
 		if client != nil {
 			select {
-			case client.SendDataQueue <- msg:
+			case client.SendDataQueue <- newMsgBytes:
 				fmt.Println("消息已发送给用户:", v)
 			default:
 				fmt.Println("用户", v, "的发送队列已满，消息仅存储在Redis")
@@ -195,62 +220,126 @@ func SendMsgToGroup(ids []uint, msg []byte, groupId uint) {
 // 前端 ——WebSocket—— 后端（Go+Gin+WebSocket） —— 调 AI API（流式） —— 前端展示
 func ChatWithGemini(msg []byte) {
 	ctx := context.Background()
+	
+	// 1. 初始化 AI 客户端
 	cc := genai.ClientConfig{
 		APIKey: utils.GeminiKey,
 	}
-
 	aiClient, err := genai.NewClient(ctx, &cc)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("AI Client Error:", err)
+		return // 客户端都起不来，直接返回
 	}
 
-	var Msg model.Message
-	json.Unmarshal(msg, &Msg)
+	// 2. 解析用户消息
+	var userMsg model.Message
+	if err := json.Unmarshal(msg, &userMsg); err != nil {
+		fmt.Println("JSON Unmarshal Error:", err)
+		return
+	}
+	
+	// 3. 补全用户消息字段 (服务器权威时间)
+	userMsg.CreateTime = uint64(time.Now().UnixMilli())
+	userMsg.TargetId = 0 // 假设 AI ID 是 0
+	userMsg.Type = 1     // 私聊
+
+	// ==========================================
+	// 4. 用户消息 - 立即持久化 (MySQL + Redis)
+	// ==========================================
+	
+	// A. 存 MySQL
+	if err := utils.DB.Create(&userMsg).Error; err != nil {
+		fmt.Println("User Msg DB Error:", err)
+		return
+	}
+
+	// B. 存 Redis (你现在的 Key 逻辑)
+	// 如果你 GetAiMessagesFromRedis 也是用的 aichat:0:UserId，那这里就保持
+	// 如果前端用的是通用的 GetSingleHistoryMsg，这里建议改为 chat:private:0:UserId
+	key := fmt.Sprintf("aichat:%d:%d", 0, userMsg.UserId) 
+
+	userMsgBytes, _ := json.Marshal(userMsg)
+	
+	// 立即写入 Redis，不要等 AI 回复完
+	pipe := utils.RDB.Pipeline()
+	pipe.ZAdd(ctx, key, redis.Z{
+		Score:  float64(userMsg.CreateTime),
+		Member: userMsgBytes,
+	})
+	pipe.Expire(ctx, key, 7*24*time.Hour)
+	pipe.ZRemRangeByRank(ctx, key, 0, -501)
+	pipe.Exec(ctx)
+
+	// ==========================================
+	// 5. 调用 AI 生成
+	// ==========================================
 	stream := aiClient.Models.GenerateContentStream(
 		ctx,
 		"gemini-2.5-flash",
-		genai.Text(Msg.Content),
+		genai.Text(userMsg.Content),
 		nil,
 	)
 
-	// redis存ai消息
-	key := fmt.Sprintf("aichat:%d:%d", 0, Msg.UserId)
+	// 获取 WebSocket 客户端用于推送
+	client, isOnline := GlobalHub.UserToClient[userMsg.UserId]
+	
+	fullAIResponse := "" // 收集完整回复
 
-	score, err := utils.RDB.ZCard(ctx, key).Result()
-	if err != nil {
-		fmt.Println("获取群聊消息数量失败:", err)
-	}
-
-	if score == 0 {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: 0, Member: msg})
-	} else {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
-	}
-
-	client := GlobalHub.UserToClient[Msg.UserId]
-
-	aiRedisContent := " "
-	// 将流消息发送给自己
 	for chunk, err := range stream {
 		if err == nil {
-			part := chunk.Candidates[0].Content.Parts[0]
-			// 发送给谁呢,发送给自己吧，由前端设置显示
-			aiRedisContent += part.Text
-			Text, err := json.Marshal(part.Text)
-			if err == nil {
-				client.SendDataQueue <- Text
-			} else {
-				fmt.Println(err)
+			if len(chunk.Candidates) > 0 && len(chunk.Candidates[0].Content.Parts) > 0 {
+				part := chunk.Candidates[0].Content.Parts[0]
+				textStr := fmt.Sprintf("%s", part) // 强转 string
+				
+				fullAIResponse += textStr
+
+				// 实时推送给前端
+				if isOnline && client != nil {
+					// 直接推字符串给前端，前端收到后追加显示
+					respBytes, _ := json.Marshal(textStr)
+					select {
+					case client.SendDataQueue <- respBytes:
+					default:
+					}
+				}
 			}
 		} else {
-			fmt.Println(err)
+			fmt.Println("Stream Error:", err)
+			break
 		}
-
 	}
-	// 这里也得记录，因为是发给自己
-	aiRedisMsg := Msg
-	aiRedisMsg.UserId, aiRedisMsg.TargetId = aiRedisMsg.TargetId, aiRedisMsg.UserId
-	aiRedisMsg.Content = aiRedisContent
-	airedismsg, _ := json.Marshal(aiRedisMsg)
-	utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score + 1), Member: airedismsg})
+
+	// ==========================================
+	// 6. AI 消息 - 最终持久化 (MySQL + Redis)
+	// ==========================================
+	
+	// 构建 AI 消息对象
+	aiMsg := model.Message{
+		UserId:     0,               // AI 发送
+		TargetId:   userMsg.UserId,  // 用户接收
+		Content:    fullAIResponse,
+		Type:       1,
+		Media:      1,
+		CreateTime: uint64(time.Now().UnixMilli()), // 生成结束的时间
+	}
+
+	// A. 存 MySQL (关键补充)
+	if err := utils.DB.Create(&aiMsg).Error; err != nil {
+		fmt.Println("AI Msg DB Error:", err)
+	}
+
+	// B. 存 Redis
+	aiMsgBytes, _ := json.Marshal(aiMsg)
+	
+	pipe = utils.RDB.Pipeline()
+	pipe.ZAdd(ctx, key, redis.Z{
+		Score:  float64(aiMsg.CreateTime),
+		Member: aiMsgBytes,
+	})
+	pipe.Expire(ctx, key, 7*24*time.Hour)
+	pipe.ZRemRangeByRank(ctx, key, 0, -501)
+	
+	if _, err := pipe.Exec(ctx); err != nil {
+		fmt.Println("AI Msg Redis Error:", err)
+	}
 }

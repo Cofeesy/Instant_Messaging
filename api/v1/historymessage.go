@@ -36,7 +36,7 @@ func GetSingleMessagesFromRedis(c *gin.Context) {
 // @Success 200 {string} json{"code","data"}
 // @Router /message/getGroupMessagesFromRedis [post]
 func GetGroupMessagesFromRedis(c *gin.Context) {
-	var groupRedis request.GroupRedisPayload
+	var groupRedis request.GroupHistoryMsgReq
 
 	if err := c.ShouldBindJSON(&groupRedis); err != nil {
 		response.FailWithMessage(err.Error(), c)
@@ -44,9 +44,9 @@ func GetGroupMessagesFromRedis(c *gin.Context) {
 	}
 
 	// 如果没有提供分页参数，默认读取所有消息
-	if groupRedis.End == 0 {
-		groupRedis.End = -1
-	}
+	// if groupRedis.End == 0 {
+	// 	groupRedis.End = -1
+	// }
 
 	// 从 Redis 中读取群聊消息
 	redismsg, err := service.GetGroupHistoryMessages(&groupRedis)
@@ -63,16 +63,11 @@ func GetGroupMessagesFromRedis(c *gin.Context) {
 
 // ai聊天历史记录
 func GetAiMessagesFromRedis(c *gin.Context) {
-	var aiRedis request.AiRedisMsgPayload
+	var aiRedis request.AiHistoryMsgReq
 
 	if err := c.ShouldBindJSON(&aiRedis); err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return
-	}
-
-	// 如果没有提供分页参数，默认读取所有消息
-	if aiRedis.End == 0 {
-		aiRedis.End = -1
 	}
 
 	// 从 Redis 中读取群聊消息
