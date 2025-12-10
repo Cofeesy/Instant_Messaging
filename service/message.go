@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"gin_chat/model"
 	"gin_chat/utils"
-	"time"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/genai"
+	"time"
 )
 
-func dispatchMsg(msg []byte,client *Client) {
+func dispatchMsg(msg []byte, client *Client) {
 	var Msg model.Message
 	json.Unmarshal(msg, &Msg)
 
@@ -23,7 +23,6 @@ func dispatchMsg(msg []byte,client *Client) {
 		fmt.Println("【ERROR】消息序列化失败:", err)
 		return
 	}
-
 
 	// TODO:target设置-1的时候会报错，但不影响通信
 	switch Msg.Type {
@@ -75,12 +74,31 @@ func dispatchMsg(msg []byte,client *Client) {
 // 即clientA 的 Send goroutine 只会在 clientA.conn 上写，clientB 的 Send goroutine 只会在 clientB.conn 上写。职责非常明确
 // 关键点是看谁开启了这个协程，服务器只是负责发送和接受信息
 func SendMsgToUser(formid, targetId uint, msg []byte) {
-	mu.RLock()
-	recieve_client, ok :=GlobalHub.UserToClient[targetId]
-	mu.RUnlock()
+	var mysqlMsg model.Message
+	err := json.Unmarshal(msg, &mysqlMsg)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
+	// 使用服务器的时间
+	nowMilli := uint64(time.Now().UnixMilli())
+	mysqlMsg.CreateTime = nowMilli
+	// 存mysql
+	if err := utils.DB.Create(&mysqlMsg).Error; err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	// 更新时间后的msg，redis数据需和mysql保持一致
+	newMsgBytes, err := json.Marshal(mysqlMsg)
+	if err != nil {
+		fmt.Println("序列化失败:", err.Error())
+		return
+	}
+
+	// 存redis
 	ctx := context.Background()
-
 	// 私聊: chat:private:{小ID}:{大ID}
 	key := ""
 	if formid < targetId {
@@ -89,21 +107,36 @@ func SendMsgToUser(formid, targetId uint, msg []byte) {
 		key = fmt.Sprintf("chat:private:%d:%d", targetId, formid)
 	}
 
-	// 使用redis的有序集合
-	// zcard获取有序集合的成员数
-	score, err := utils.RDB.ZCard(ctx, key).Result()
+	// 使用管道优化：一次发送多条命令给 Redis，让 Redis 连续执行后再一次性返回结果。
+	// 不是原子操作，只是减少网络rtt
+	pipe := utils.RDB.Pipeline()
+	// 时间戳作为score
+	score := float64(mysqlMsg.CreateTime) 
+	pipe.ZAdd(ctx, key, redis.Z{
+		Score:  score,
+		Member: newMsgBytes,
+	})
+
+	// 设置过期时间
+	pipe.Expire(ctx, key, 7*24*time.Hour)
+
+
+	// ZRemRangeByRank: 裁剪/清理旧消息 (实现滑动窗口)
+	// 只保留最新的 500 条。
+	// 逻辑：移除排名为 0 到 -501 的元素 (即保留倒数 500 个)
+	pipe.ZRemRangeByRank(ctx, key, 0, -501)
+
+	_, err = pipe.Exec(ctx)
 	if err != nil {
-		fmt.Println(">>>>>>>>>err:", err)
-		return
+		fmt.Println("【ERROR】Redis 写入失败:", err)
+		// 注意：Redis 失败通常不回滚 MySQL，记录日志即可
 	}
 
-	// 初次存储
-	if score == 0 {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: 0, Member: msg})
-	} else {
-		utils.RDB.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: msg})
-	}
-
+	// TODO:以上内容是否可以异步处理？-->消息队列
+	// 推送消息	
+	mu.RLock()
+	recieve_client, ok := GlobalHub.UserToClient[targetId]
+	mu.RUnlock()
 	if ok && recieve_client != nil {
 		// 防止写入阻塞导致协程泄露
 		select {

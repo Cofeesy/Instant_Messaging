@@ -416,85 +416,188 @@
                 closePanel() {
                     this.panelstat = 'kbord';
                 },
-                singlemsg: function (user) {
-                var that = this;
-                this.start = 0;
-                this.end = 9;
-                this.isLoadMore = false;
+            //     singlemsg: function (user) {
+            //     var that = this;
+            //     this.start = 0;
+            //     this.end = 9;
+            //     this.isLoadMore = false;
 
-                if (this.isDisable) {
-                    this.msglist = []; // 清空当前消息列表
+            //     if (this.isDisable) {
+            //         this.msglist = []; // 清空当前消息列表
                     
-                    // 设置当前聊天上下文
-                    this.win = "single";
-                    this.title = "和 " + user.username + " 聊天中";
-                    this.otherAvatar = user.Avatar;
-                    this.msgcontext.targetid = parseInt(user.ID);
-                    this.msgcontext.type = 1;
+            //         // 设置当前聊天上下文
+            //         this.win = "single";
+            //         this.title = "和 " + user.username + " 聊天中";
+            //         this.otherAvatar = user.Avatar;
+            //         this.msgcontext.targetid = parseInt(user.ID);
+            //         this.msgcontext.type = 1;
 
-                    // 定义通用的渲染逻辑
-                    var processAndShow = function(rows, isReverse) {
-                        rows.forEach(function(item) {
-                            // 如果是字符串先解析
-                            if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) {} }
-                            that.showmsg(user, item, isReverse, false);
-                        });
-                    };
+            //         // 定义通用的渲染逻辑
+            //         var processAndShow = function(rows, isReverse) {
+            //             rows.forEach(function(item) {
+            //                 // 如果是字符串先解析
+            //                 if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) {} }
+            //                 that.showmsg(user, item, isReverse, false);
+            //             });
+            //         };
 
-                    // 首次加载
-                    util.post("user/getSingleMessagesFromRedis", { 
-                        userid: userid(), 
-                        targetid: user.ID, 
-                        start: this.start, 
-                        end: this.end, 
-                        isreverse: false 
-                    }).then(function (res) {
-                        if (res.code === 0 && res.data && res.data.Rows) {
-                            processAndShow(res.data.Rows, false);
-                        } else {
-                            console.log("【singlemsg】无历史消息或数据格式为空");
-                        }
-                    }).catch(function(err){ 
-                        console.error('加载历史消息失败:', err);
-                    });
+            //         // 首次加载
+            //         util.post("user/getSingleMessagesFromRedis", { 
+            //             userid: userid(), 
+            //             targetid: user.ID, 
+            //             start: this.start, 
+            //             end: this.end, 
+            //             isreverse: false 
+            //         }).then(function (res) {
+            //             if (res.code === 0 && res.data && res.data.Rows) {
+            //                 processAndShow(res.data.Rows, false);
+            //             } else {
+            //                 console.log("【singlemsg】无历史消息或数据格式为空");
+            //             }
+            //         }).catch(function(err){ 
+            //             console.error('加载历史消息失败:', err);
+            //         });
 
-                    this.setTimeFlag();
+            //         this.setTimeFlag();
 
-                    // 初始化滚动与监听
-                    setTimeout(function() {
-                        mui('.mui-scroll-wrapper').scroll({
-                            scrollY: true, scrollX: false, startX: 0, startY: 0,
-                            indicators: true, deceleration: 0.0006, bounce: true
-                        });
+            //         // 初始化滚动与监听
+            //         setTimeout(function() {
+            //             mui('.mui-scroll-wrapper').scroll({
+            //                 scrollY: true, scrollX: false, startX: 0, startY: 0,
+            //                 indicators: true, deceleration: 0.0006, bounce: true
+            //             });
                         
-                        // 监听上拉加载更多
-                        document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
-                            let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
-                            if (translate && translate.length > 1) {
-                                if (translate[1] > 0 && that.isLoadMore == false) {
-                                    that.isLoadMore = true;
-                                    that.start = that.end + 1;
-                                    that.end = that.end + 10;
+            //             // 监听上拉加载更多
+            //             document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
+            //                 let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
+            //                 if (translate && translate.length > 1) {
+            //                     if (translate[1] > 0 && that.isLoadMore == false) {
+            //                         that.isLoadMore = true;
+            //                         that.start = that.end + 1;
+            //                         that.end = that.end + 10;
                                     
-                                    util.post("user/getSingleMessagesFromRedis", { 
-                                        userid: userid(), 
-                                        targetid: user.ID, 
-                                        start: that.start, 
-                                        end: that.end, 
-                                        isreverse: false 
-                                    }).then(function (res) {
-                                        if (res.code === 0 && res.data && res.data.Rows) {
-                                            processAndShow(res.data.Rows, true); // true 代表插入到头部
-                                        }
-                                        setTimeout(function() { that.isLoadMore = false; }, 300);
-                                    });
-                                    that.isReadRedisMsg.push(user.ID);
-                                }
+            //                         util.post("user/getSingleMessagesFromRedis", { 
+            //                             userid: userid(), 
+            //                             targetid: user.ID, 
+            //                             start: that.start, 
+            //                             end: that.end, 
+            //                             isreverse: false 
+            //                         }).then(function (res) {
+            //                             if (res.code === 0 && res.data && res.data.Rows) {
+            //                                 processAndShow(res.data.Rows, true); // true 代表插入到头部
+            //                             }
+            //                             setTimeout(function() { that.isLoadMore = false; }, 300);
+            //                         });
+            //                         that.isReadRedisMsg.push(user.ID);
+            //                     }
+            //                 }
+            //             });
+            //         }, 200);
+            //     }
+            // },
+            singlemsg: function (user) {
+            var that = this;
+
+            this.cursor = 0;   // 0 获取最新消息
+            this.limit = 20;   // 每次拉取 20 条
+            this.isLoadMore = false;
+            this.isFinished = false; // 标记是否没有更多数据了
+
+            if (this.isDisable) {
+                this.msglist = []; // 清空当前消息列表
+                
+                // 设置当前聊天上下文
+                this.win = "single";
+                this.title = "和 " + user.username + " 聊天中";
+                this.otherAvatar = user.Avatar;
+                this.msgcontext.targetid = parseInt(user.ID);
+                this.msgcontext.type = 1;
+
+                // 渲染逻辑中增加游标更新
+               var processAndShow = function(rows, isReverse) {
+                    if (!rows || rows.length === 0) {
+                        that.isFinished = true;
+                        return;
+                    }
+
+                    var lastMsg = rows[rows.length - 1];
+                    if (typeof lastMsg === 'string') { try { lastMsg = JSON.parse(lastMsg); } catch (e) {} }
+                    
+                    if (lastMsg && lastMsg.createTime) {
+                        that.cursor = lastMsg.createTime;
+                    }
+
+                    if (!isReverse) {
+                        rows.reverse();
+                    }
+                    
+                    rows.forEach(function(item) {
+                        if (typeof item === 'string') { try { item = JSON.parse(item); } catch (e) {} }
+                        that.showmsg(user, item, isReverse, false);
+                    });
+                };
+
+                // 首次加载
+                util.post("user/getSingleMessagesFromRedis", { 
+                    userid: userid(), 
+                    targetid: user.ID, 
+                    cursor: 0,        // 传 0 拉最新的
+                    limit: this.limit 
+                }).then(function (res) {
+                    var list = (res.data && res.data.Rows) ? res.data.Rows : res.data;
+
+                    if (res.code === 0 && list && list.length > 0) {
+                        processAndShow(list, false);
+                    } else {
+                        console.log("【singlemsg】无历史消息");
+                        that.isFinished = true; // 没数据标记结束
+                    }
+                }).catch(function(err){ 
+                    console.error('加载历史消息失败:', err);
+                });
+
+                this.setTimeFlag();
+
+                // 初始化滚动与监听
+                setTimeout(function() {
+                    mui('.mui-scroll-wrapper').scroll({
+                        scrollY: true, scrollX: false, startX: 0, startY: 0,
+                        indicators: true, deceleration: 0.0006, bounce: true
+                    });
+                    
+                    // 监听上拉加载更多
+                    document.querySelector('.mui-scroll-wrapper').addEventListener('scroll', function (e) {
+                        let translate = e.target.style?.transform?.match(/translate3d\(\d+px,\s*(\d+)px,\s*(\d+)px\)/i);
+                        if (translate && translate.length > 1) {
+                            // 判断条件增加 isFinished，防止到底了还请求
+                            if (translate[1] > 0 && that.isLoadMore == false && that.isFinished == false) {
+                                that.isLoadMore = true;
+                                
+                                // 直接使用 processAndShow 里更新过的 that.cursor
+
+                                util.post("user/getSingleMessagesFromRedis", { 
+                                    userid: userid(), 
+                                    targetid: user.ID, 
+                                    cursor: that.cursor, // 传上一页最后一条的时间
+                                    limit: that.limit
+                                }).then(function (res) {
+                                    var list = (res.data && res.data.Rows) ? res.data.Rows : res.data;
+
+                                    if (res.code === 0 && list && list.length > 0) {
+                                        processAndShow(list, true); // true 代表插入到头部
+                                    } else {
+                                        that.isFinished = true; // 返回空，说明没有更多历史记录了
+                                    }
+                                    setTimeout(function() { that.isLoadMore = false; }, 300);
+                                });
+                                
+                                that.isReadRedisMsg.push(user.ID);
                             }
-                        });
-                    }, 200);
-                }
-            },
+                        }
+                    });
+                }, 200);
+            }
+        },
                 // 进入 AI 聊天窗口
                 // 进入 AI 聊天窗口
                 aiChat: function () {

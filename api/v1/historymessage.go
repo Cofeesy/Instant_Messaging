@@ -10,7 +10,7 @@ import (
 )
 
 func GetSingleMessagesFromRedis(c *gin.Context) {
-	var redisPayload request.SingleRedisPayload
+	var redisPayload request.SingleHistoryMsgReq
 	err := c.ShouldBindJSON(&redisPayload)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)

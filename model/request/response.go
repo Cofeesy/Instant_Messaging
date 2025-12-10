@@ -78,12 +78,20 @@ type AuthMessage struct {
 	Token  string `json:"token"`
 }
 
-type SingleRedisPayload struct {
-	UserId    uint  `json:"userid"`
-	TargetId  uint  `json:"targetid"`
-	Start     int64 `json:"start"`
-	End       int64 `json:"end"`
-	IsReverse bool  `json:"isreverse"`
+// type SingleRedisPayload struct {
+// 	UserId    uint  `json:"userid"`
+// 	TargetId  uint  `json:"targetid"`
+// 	Start     int64 `json:"start"`
+// 	End       int64 `json:"end"`
+// 	IsReverse bool  `json:"isreverse"`
+// }
+type SingleHistoryMsgReq struct {
+	UserId   uint  `json:"userid"`
+	TargetId uint  `json:"targetid"`
+	// Cursor: 上一页最后一条消息的毫秒时间戳 (CreateTime)。
+	// 首次加载传 0。
+	Cursor   int64 `json:"cursor"` 
+	Limit    int   `json:"limit"` // 比如 20
 }
 
 type GroupRedisPayload struct {
