@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +41,5 @@ func (user *User_Basic) TableName() string {
 // 生成用户前返回用户的唯一uuid
 func (u *User_Basic) BeforeCreate(tx *gorm.DB) (err error) {
 	u.UUID = uuid.New()
-	fmt.Print(u.UUID)
 	return
 }

@@ -1,9 +1,9 @@
 package v1
 
 import (
-	"gin_chat/model/response"
-	"gin_chat/model/request"
-	"gin_chat/service"
+	"ZustChat/model/response"
+	"ZustChat/model/request"
+	"ZustChat/service"
 	"github.com/gin-gonic/gin"
 )
 

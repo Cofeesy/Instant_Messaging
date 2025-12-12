@@ -1,4 +1,4 @@
-module gin_chat
+module ZustChat
 
 go 1.24.0
 
@@ -16,6 +16,7 @@ require (
 	github.com/swaggo/swag v1.16.4
 	go.uber.org/zap v1.27.1
 	google.golang.org/genai v1.36.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.0
 )

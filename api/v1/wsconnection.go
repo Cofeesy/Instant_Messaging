@@ -2,8 +2,8 @@ package v1
 
 import (
 	"encoding/json"
-	"gin_chat/model/request"
-	"gin_chat/service"
+	"ZustChat/model/request"
+	"ZustChat/service"
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"

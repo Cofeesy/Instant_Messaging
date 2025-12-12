@@ -1,0 +1,2 @@
+{"level":"\u001b[34minfo\u001b[0m","time":"2025-12-12T22:39:39.282+0800","caller":"utils/redis.go:40","msg":"Redis初始化成功","addr":"localhost:6379","db":0}
+{"level":"\u001b[34minfo\u001b[0m","time":"2025-12-12T22:39:39.292+0800","caller":"Zustchat/main.go:34","msg":"服务器启动","addr":":8081","mode":"debug"}

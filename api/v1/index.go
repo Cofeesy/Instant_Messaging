@@ -2,11 +2,11 @@ package v1
 
 import (
 	"fmt"
-	"gin_chat/model"
-	"gin_chat/model/response"
-	"gin_chat/model/request"
-	"gin_chat/service"
-	"gin_chat/utils"
+	"ZustChat/model"
+	"ZustChat/model/response"
+	"ZustChat/model/request"
+	"ZustChat/service"
+	"ZustChat/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"html/template"

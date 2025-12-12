@@ -30,7 +30,7 @@ func (hub *Hub)Management(){
 			// 删除
 			close(client.SendDataQueue)
 			delete(hub.UserToClient,client.User_id)
-		// case:广播
+		// case:广播/待扩展
 		}
 	}
 }

@@ -2,10 +2,10 @@ package service
 
 import (
 	"errors"
-	"gin_chat/model/request"
-	"gin_chat/model"
+	"ZustChat/model/request"
+	"ZustChat/model"
 	"gorm.io/gorm"
-	"gin_chat/utils"
+	"ZustChat/utils"
 )
 
 // TODO:

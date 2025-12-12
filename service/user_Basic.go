@@ -2,10 +2,10 @@ package service
 
 import (
 	"errors"
-	"fmt"
-	"gin_chat/model"
-	"gin_chat/model/request"
-	"gin_chat/utils"
+	"ZustChat/model"
+	"ZustChat/model/request"
+	"ZustChat/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -14,15 +14,12 @@ import (
 // 而默认值是0001-01-01 00:00:00，这样mysql会报错
 // 因此这里使用*time.Time指针类型
 
-
 func GetUserList() ([]*model.User_Basic, error) {
 	data := make([]*model.User_Basic, 10)
 	if err := utils.DB.Find(&data).Error; err != nil {
 		return nil, err
 	}
-	for _, v := range data {
-		fmt.Println(v)
-	}
+	// 移除调试打印，如需调试可使用日志
 	return data, nil
 }
 
@@ -90,7 +87,7 @@ func UpdateUserInfo(updateuserinfo *request.UpdateUserInfo) error {
 	if err != nil {
 		return err
 	}
-	
+
 	result := utils.DB.Model(&user).Updates(map[string]interface{}{"UserName": updateuserinfo.Username, "Phone": updateuserinfo.Phone, "Email": updateuserinfo.Email, "Icon": updateuserinfo.Icon})
 	return result.Error
 }

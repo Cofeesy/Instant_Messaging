@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/go-ini/ini"
 	"log"
 	"time"
+
+	"github.com/go-ini/ini"
 	// "gin_chat/service"
 )
 
@@ -34,9 +35,11 @@ func InitializeSystem() {
 	LoadAPP()
 	LoadServer()
 	LoadTimer()
+	// 初始化日志（需要在其他初始化之前，以便记录后续初始化过程）
+	InitLogger()
 	InitMysql()
 	InitRedis()
-	// InitTimer(service.CleanConnection) 
+	// InitTimer(service.CleanConnection)
 }
 
 func LoadAPP() {
@@ -45,7 +48,6 @@ func LoadAPP() {
 	GeminiKey = app.Key("GEMINI_KEY").MustString("")
 	RunMode = app.Key("RUN_MODES").MustString("debug")
 }
-
 
 func LoadServer() {
 	server, err := Cfg.GetSection("server")
@@ -75,5 +77,3 @@ func LoadTimer() {
 	HeartbeatMaxTime = Timer.Key("HeartbeatMaxTime").MustUint64(30000)
 	RedisOnlineTime = Timer.Key("RedisOnlineTime").MustUint64(40)
 }
-
-

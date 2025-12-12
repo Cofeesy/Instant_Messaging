@@ -186,9 +186,10 @@ go run main.go
 
 ### TODO
 - 1.日志完善，并追踪调用过程
-- 2.冷热数据存储，近期消息存储在redis，全量数据存储在mysql(目前想法是消息队列异步实现)
+- 2.冷热数据存储，近期消息存储在redis，全量数据存储在mysql ---已ok
 - 3.docker部署（dockerfile编写）
 - 4.优化结构和mysql语句
+- 5.ai聊天优化
 
 
 <!-- 详细的 API 文档请访问 Swagger 页面：http://localhost:8081/swagger/index.html -->

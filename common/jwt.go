@@ -2,8 +2,8 @@ package common
 
 import (
 	"github.com/gin-gonic/gin"
-	"gin_chat/utils"
-	"gin_chat/model/response"
+	"ZustChat/utils"
+	"ZustChat/model/response"
 	"time"
 )
 

@@ -2,9 +2,9 @@ package service
 
 import (
 	"errors"
-	"gin_chat/model"
-	"gin_chat/model/request"
-	"gin_chat/utils"
+	"ZustChat/model"
+	"ZustChat/model/request"
+	"ZustChat/utils"
 )
 
 // 创建群

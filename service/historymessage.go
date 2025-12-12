@@ -1,14 +1,18 @@
 package service
 
-import(
+import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gin_chat/model"
-	"gin_chat/model/request"
-	"gin_chat/utils"
+	"ZustChat/global"
+	"ZustChat/model"
+	"ZustChat/model/request"
+	"ZustChat/utils"
 	"time"
+
 	"github.com/redis/go-redis/v9"
+
+	"go.uber.org/zap"
 )
 
 func GetSingleHistoryMsg(singleReq request.SingleHistoryMsgReq) ([]*model.Message, error) {
@@ -26,7 +30,7 @@ func GetSingleHistoryMsg(singleReq request.SingleHistoryMsgReq) ([]*model.Messag
 	max := "+inf" // 默认查最新的
 	if singleReq.Cursor > 0 {
 		// "(" 表示开区间，即不包含 Cursor 这条本身，防止重复
-		max = fmt.Sprintf("(%d", singleReq.Cursor) 
+		max = fmt.Sprintf("(%d", singleReq.Cursor)
 	}
 
 	// 从 Redis 倒序查询
@@ -40,8 +44,13 @@ func GetSingleHistoryMsg(singleReq request.SingleHistoryMsgReq) ([]*model.Messag
 
 	if err != nil {
 		// 如果 Redis 挂了，记录日志，不直接返回错，尝试去 DB 查兜底
-		fmt.Println("Redis查询失败,降级查DB:", err)
-		redisVals = []string{} 
+		global.Logger.Warn("Redis查询失败,降级查DB",
+			zap.Uint("user_id", singleReq.UserId),
+			zap.Uint("target_id", singleReq.TargetId),
+			zap.String("key", key),
+			zap.Error(err),
+		)
+		redisVals = []string{}
 	}
 
 	msgs := make([]*model.Message, 0)
@@ -55,10 +64,10 @@ func GetSingleHistoryMsg(singleReq request.SingleHistoryMsgReq) ([]*model.Messag
 	// 如果 Redis 里拿到的数量少于 Limit (说明 Redis 数据没了，或者发生了断层)
 	if len(msgs) < singleReq.Limit {
 		need := singleReq.Limit - len(msgs)
-		
+
 		// 计算MySQL查询的起始时间 (nextCursor)
 		var nextCursor int64
-		
+
 		if len(msgs) > 0 {
 			// A:Redis里有几条，但不够。接着 Redis 最后一条往下查
 			nextCursor = int64(msgs[len(msgs)-1].CreateTime)
@@ -73,31 +82,32 @@ func GetSingleHistoryMsg(singleReq request.SingleHistoryMsgReq) ([]*model.Messag
 
 		// 去 MySQL 查剩下的
 		var dbMsgs []*model.Message
-		
+
 		// GORM 查询：
 		// 1. 双方 ID 匹配 (注意 A->B 和 B->A 都是同一个会话)
 		// 2. create_time < nextCursor
 		// 3. 倒序 + 限制条数
 		err := utils.DB.Where(
-			"((user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)) AND create_time < ?", 
-			singleReq.UserId, singleReq.TargetId, singleReq.TargetId, singleReq.UserId, nextCursor, 
+			"((user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)) AND create_time < ?",
+			singleReq.UserId, singleReq.TargetId, singleReq.TargetId, singleReq.UserId, nextCursor,
 		).
-		Order("create_time DESC").
-		Limit(need).
-		Find(&dbMsgs).Error
-			
+			Order("create_time DESC").
+			Limit(need).
+			Find(&dbMsgs).Error
+
 		if err != nil {
-			fmt.Println("DB Query Error:", err)
+			global.Logger.Error("私聊历史消息DB查询失败",
+				zap.Uint("user_id", singleReq.UserId),
+				zap.Uint("target_id", singleReq.TargetId),
+				zap.Error(err),
+			)
 			// DB 也错了，返回当前已有的
-			return msgs, nil 
-		} else{
-			fmt.Println("数据库查找成功")
+			return msgs, nil
 		}
 
 		// 合并结果: Redis在前，MySQL在后
 		msgs = append(msgs, dbMsgs...)
 	}
-
 
 	return msgs, nil
 }
@@ -107,45 +117,12 @@ func GetGroupHistoryMessages(groupReq *request.GroupHistoryMsgReq) ([]*model.Mes
 
 	key := fmt.Sprintf("chat:group:%d", groupReq.GroupId)
 
-	// var stringmsgs []string
-	// total, err := utils.RDB.ZCard(ctx, key).Result()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// if groupRedis.End == -1 {
-	// 	stringmsgs, err = utils.RDB.ZRange(ctx, key, 0, -1).Result()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// } else {
-	// 	if total == 0 {
-	// 		return []*model.Message{}, nil
-	// 	}
-	// 	s := int64(total) - 1 - groupRedis.End
-	// 	e := int64(total) - 1 - groupRedis.Start
-	// 	if s < 0 {
-	// 		s = 0
-	// 	}
-	// 	if e < 0 {
-	// 		return []*model.Message{}, nil
-	// 	}
-	// 	stringmsgs, err = utils.RDB.ZRange(ctx, key, s, e).Result()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-
 	// 准备Redis查询参数 (ZRevRangeByScore)
-	// 我们要查 Score < Cursor 的数据，也就是比这个时间更早的消息
+	// 要查 Score < Cursor 的数据，也就是比这个时间更早的消息
 	max := "+inf" // 默认查最新的
 	if groupReq.Cursor > 0 {
 		// "(" 表示开区间，即不包含 Cursor 这条本身，防止重复
-		max = fmt.Sprintf("(%d", groupReq.Cursor) 
+		max = fmt.Sprintf("(%d", groupReq.Cursor)
 	}
 
 	// 从 Redis 倒序查询
@@ -158,9 +135,13 @@ func GetGroupHistoryMessages(groupReq *request.GroupHistoryMsgReq) ([]*model.Mes
 	}).Result()
 
 	if err != nil {
-		// 如果 Redis 挂了，记录日志，不直接返回错，尝试去 DB 查兜底
-		fmt.Println("Redis查询失败,降级查DB:", err)
-		redisVals = []string{} 
+		// 如果 Redis 挂了，记录日志，不直接返回错，尝试去DB兜底
+		global.Logger.Warn("Redis查询失败,降级查DB",
+			zap.Uint("group_id", groupReq.GroupId),
+			zap.String("key", key),
+			zap.Error(err),
+		)
+		redisVals = []string{}
 	}
 
 	msgs := make([]*model.Message, 0)
@@ -174,10 +155,10 @@ func GetGroupHistoryMessages(groupReq *request.GroupHistoryMsgReq) ([]*model.Mes
 	// 如果 Redis 里拿到的数量少于 Limit (说明 Redis 数据没了，或者发生了断层)
 	if len(msgs) < groupReq.Limit {
 		need := groupReq.Limit - len(msgs)
-		
+
 		// 计算MySQL查询的起始时间 (nextCursor)
 		var nextCursor int64
-		
+
 		if len(msgs) > 0 {
 			// A:Redis里有几条，但不够。接着 Redis 最后一条往下查
 			nextCursor = int64(msgs[len(msgs)-1].CreateTime)
@@ -192,22 +173,23 @@ func GetGroupHistoryMessages(groupReq *request.GroupHistoryMsgReq) ([]*model.Mes
 
 		// 去 MySQL 查剩下的
 		var dbMsgs []*model.Message
-		
+
 		// GORM 查询：
 		// 1. 双方 ID 匹配 (注意 A->B 和 B->A 都是同一个会话)
 		// 2. create_time < nextCursor
 		// 3. 倒序 + 限制条数
 		err := utils.DB.Where("target_id = ? AND type = 2 AND create_time < ?", groupReq.GroupId, nextCursor).
-		Order("create_time DESC").
-		Limit(need).
-		Find(&dbMsgs).Error
-			
+			Order("create_time DESC").
+			Limit(need).
+			Find(&dbMsgs).Error
+
 		if err != nil {
-			fmt.Println("DB Query Error:", err)
+			global.Logger.Error("群聊历史消息DB查询失败",
+				zap.Uint("group_id", groupReq.GroupId),
+				zap.Error(err),
+			)
 			// DB 也错了，返回当前已有的
-			return msgs, nil 
-		} else{
-			fmt.Println("数据库查找成功")
+			return msgs, nil
 		}
 
 		// 合并结果: Redis在前，MySQL在后
@@ -228,16 +210,11 @@ func GetAiHistoryMessages(aiReq *request.AiHistoryMsgReq) ([]*model.Message, err
 		key = fmt.Sprintf("chat:private:%d:%d", aiReq.TargetId, aiReq.UserId)
 	}
 
-	// 准备Redis查询参数 (ZRevRangeByScore)
-	// 我们要查 Score < Cursor 的数据，也就是比这个时间更早的消息
-	max := "+inf" // 默认查最新的
+	max := "+inf"
 	if aiReq.Cursor > 0 {
-		// "(" 表示开区间，即不包含 Cursor 这条本身，防止重复
-		max = fmt.Sprintf("(%d", aiReq.Cursor) 
+		max = fmt.Sprintf("(%d", aiReq.Cursor)
 	}
 
-	// 从 Redis 倒序查询
-	// 结果是 []string，里面存的是 json
 	redisVals, err := utils.RDB.ZRevRangeByScore(ctx, key, &redis.ZRangeBy{
 		Min:    "-inf",
 		Max:    max,
@@ -246,9 +223,13 @@ func GetAiHistoryMessages(aiReq *request.AiHistoryMsgReq) ([]*model.Message, err
 	}).Result()
 
 	if err != nil {
-		// 如果 Redis 挂了，记录日志，不直接返回错，尝试去 DB 查兜底
-		fmt.Println("Redis查询失败,降级查DB:", err)
-		redisVals = []string{} 
+		global.Logger.Warn("Redis查询失败,降级查DB",
+			zap.Uint("user_id", aiReq.UserId),
+			zap.Uint("target_id", aiReq.TargetId),
+			zap.String("key", key),
+			zap.Error(err),
+		)
+		redisVals = []string{}
 	}
 
 	msgs := make([]*model.Message, 0)
@@ -259,13 +240,12 @@ func GetAiHistoryMessages(aiReq *request.AiHistoryMsgReq) ([]*model.Message, err
 		}
 	}
 
-	// 如果 Redis 里拿到的数量少于 Limit (说明 Redis 数据没了，或者发生了断层)
 	if len(msgs) < aiReq.Limit {
 		need := aiReq.Limit - len(msgs)
-		
+
 		// 计算MySQL查询的起始时间 (nextCursor)
 		var nextCursor int64
-		
+
 		if len(msgs) > 0 {
 			// A:Redis里有几条，但不够。接着 Redis 最后一条往下查
 			nextCursor = int64(msgs[len(msgs)-1].CreateTime)
@@ -280,25 +260,27 @@ func GetAiHistoryMessages(aiReq *request.AiHistoryMsgReq) ([]*model.Message, err
 
 		// 去 MySQL 查剩下的
 		var dbMsgs []*model.Message
-		
+
 		// GORM 查询：
 		// 1. 双方 ID 匹配 (注意 A->B 和 B->A 都是同一个会话)
 		// 2. create_time < nextCursor
 		// 3. 倒序 + 限制条数
 		err := utils.DB.Where(
-			"((user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)) AND create_time < ?", 
-			aiReq.UserId, aiReq.TargetId, aiReq.TargetId, aiReq.UserId, nextCursor, 
+			"((user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)) AND create_time < ?",
+			aiReq.UserId, aiReq.TargetId, aiReq.TargetId, aiReq.UserId, nextCursor,
 		).
-		Order("create_time DESC").
-		Limit(need).
-		Find(&dbMsgs).Error
-			
+			Order("create_time DESC").
+			Limit(need).
+			Find(&dbMsgs).Error
+
 		if err != nil {
-			fmt.Println("DB Query Error:", err)
+			global.Logger.Error("AI历史消息DB查询失败",
+				zap.Uint("user_id", aiReq.UserId),
+				zap.Uint("target_id", aiReq.TargetId),
+				zap.Error(err),
+			)
 			// DB 也错了，返回当前已有的
-			return msgs, nil 
-		} else{
-			fmt.Println("数据库查找成功")
+			return msgs, nil
 		}
 
 		// 合并结果: Redis在前，MySQL在后

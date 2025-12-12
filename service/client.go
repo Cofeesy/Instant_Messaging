@@ -1,17 +1,20 @@
 package service
 
 import (
-	"fmt"
-	"gin_chat/utils"
+	"ZustChat/global"
+	"ZustChat/utils"
 	"sync"
 	"time"
+
 	"github.com/gorilla/websocket"
+
+	"go.uber.org/zap"
 )
 
 var mu sync.RWMutex
 
 // 启动项
-func init(){
+func init() {
 	go GlobalHub.Management()
 }
 
@@ -20,7 +23,7 @@ type Client struct {
 	// 用户id
 	User_id uint
 	// *websocket.Conn 类型的对象。这个对象是与单个客户端进行所有通信的唯一凭证和工具。之后的所有操作都是调用这个 conn 对象的方法。
-	Conn *websocket.Conn
+	Conn          *websocket.Conn
 	HeartbeatTime uint64 //心跳时间
 	// 客户端邮箱,存储待发送消息
 	SendDataQueue chan []byte
@@ -32,21 +35,22 @@ func WsConnection(ws *websocket.Conn, userid uint) {
 	client := &Client{
 		User_id: userid,
 		Conn:    ws,
-		// Msg:  msg,
 		HeartbeatTime: current_time,
 		SendDataQueue: make(chan []byte, 256), // 创建带缓冲区的信箱
 	}
 
-	GlobalHub.Register<-client
+	GlobalHub.Register <- client
 }
-
 
 // 每个客户端一直监听即将发送的信息
 func (client *Client) Send() {
 	for msg := range client.SendDataQueue {
 		err := client.Conn.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
-			fmt.Println("write2:", err.Error())
+			global.Logger.Error("WebSocket写入消息失败",
+				zap.Uint("user_id", client.User_id),
+				zap.Error(err),
+			)
 		}
 	}
 }
@@ -55,15 +59,18 @@ func (client *Client) Send() {
 func (client *Client) Recieve() {
 	// 异常捕捉
 	defer func() {
-        GlobalHub.UnRegister <- client
+		GlobalHub.UnRegister <- client
 		// 断开wesocket连接
 		client.Conn.Close()
-    }()
-	
+	}()
+
 	for {
 		_, msg, err := client.Conn.ReadMessage()
 		if err != nil {
-			fmt.Println("read1:", err.Error())
+			global.Logger.Warn("WebSocket读取消息失败",
+				zap.Uint("user_id", client.User_id),
+				zap.Error(err),
+			)
 			break
 		}
 
@@ -71,8 +78,6 @@ func (client *Client) Recieve() {
 		dispatchMsg(msg, client)
 	}
 }
-
-
 
 // 更新用户心跳
 func (client *Client) Heartbeat(currentTime uint64) {
@@ -84,14 +89,18 @@ func CleanConnection(param interface{}) (result bool) {
 	result = true
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("cleanConnection err", r)
+			global.Logger.Error("清理连接时发生panic",
+				zap.Any("panic", r),
+			)
 		}
 	}()
 	currentTime := uint64(time.Now().Unix())
 	for i := range GlobalHub.UserToClient {
 		client := GlobalHub.UserToClient[i]
 		if client.IsHeartbeatTimeOut(currentTime) {
-			fmt.Println("心跳超时..... 关闭连接：", client)
+			global.Logger.Info("心跳超时，关闭连接",
+				zap.Uint("user_id", client.User_id),
+			)
 			client.Conn.Close()
 		}
 	}
@@ -106,7 +115,11 @@ func (client *Client) IsHeartbeatTimeOut(currentTime uint64) (timeout bool) {
 	// Time都是用的Unix(),那这个30000是秒
 	// HeartbeatMaxTime = 30000
 	if client.HeartbeatTime+uint64(utils.HeartbeatMaxTime) <= currentTime {
-		fmt.Println("心跳超时...自动下线", client)
+		global.Logger.Debug("心跳超时，自动下线",
+			zap.Uint("user_id", client.User_id),
+			zap.Uint64("heartbeat_time", client.HeartbeatTime),
+			zap.Uint64("current_time", currentTime),
+		)
 		timeout = true
 	}
 	return
